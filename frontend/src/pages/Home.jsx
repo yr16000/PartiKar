@@ -1,99 +1,116 @@
 import { useState } from "react";
+import DateRangePicker from "../components/DateRangePicker";
 
 export default function Home() {
     const [city, setCity] = useState("");
-    const [from, setFrom] = useState("");
-    const [to, setTo] = useState("");
+    const [dates, setDates] = useState({
+        from: undefined,
+        to: undefined,
+        fromTime: "10:00",
+        toTime: "10:00",
+    });
 
-    const onSearch = (e) => {
+    function onSearch(e) {
         e.preventDefault();
-        console.log("Recherche :", { city, from, to });
-    };
+        console.log("Recherche :", { city, ...dates });
+    }
 
     return (
-        <>
+        <main className="min-h-screen bg-white text-gray-900">
             {/* HEADER */}
-            <header className="flex justify-between items-center border-b border-gray-200 px-6 py-4 bg-white">
-                <div className="text-2xl font-bold">
-                    Parti<span className="text-accent">Kar</span>
-                </div>
-                <nav className="hidden md:flex gap-6">
-                    <a href="#how" className="nav-link">Comment ça marche</a>
-                    <a href="#popular" className="nav-link">Voitures</a>
-                    <a href="#trust" className="nav-link">Confiance</a>
-                </nav>
-                <div className="flex gap-3">
-                    <button className="btn-outline">Connexion</button>
-                    <button className="btn-primary">Inscription</button>
+            <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+                <div className="mx-auto w-[min(1440px,94vw)] px-6 flex h-20 items-center justify-between">
+                    <a className="text-3xl font-extrabold tracking-tight">
+                        Parti<span className="text-accent">Kar</span>
+                    </a>
+
+                    <nav className="hidden lg:flex items-center gap-12 text-lg">
+                        <a href="#how" className="nav-link">Comment ça marche</a>
+                        <a href="#popular" className="nav-link">Voitures</a>
+                        <a href="#trust" className="nav-link">Confiance</a>
+                    </nav>
+
+                    <div className="flex items-center gap-4">
+                        <button className="btn-outline h-11 px-5 text-base">Connexion</button>
+                        <button className="btn-primary h-11 px-6 text-base">Inscription</button>
+                    </div>
                 </div>
             </header>
 
             {/* HERO */}
-            <section className="text-center bg-gradient-to-b from-gray-50 to-white py-16">
-                <div className="container-pk">
-                    <h1 className="text-4xl font-bold">Location de voitures entre particuliers</h1>
-                    <p className="text-gray-600 mt-2">
-                        Rapide, . Trouve une voiture près de toi.
+            <section className="bg-gradient-to-b from-gray-50 to-white">
+                <div className="mx-auto w-[min(1200px,92vw)] px-6 py-24 lg:py-28 text-center">
+                    <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.05] max-w-[980px] mx-auto">
+                        Loue une voiture entre particuliers, partout en France
+                    </h1>
+                    <p className="mt-5 text-gray-600 text-lg md:text-xl max-w-3xl mx-auto">
+                        Trouve le véhicule parfait près de toi, avec des prix abordables et une réservation instantanée.
                     </p>
 
+                    {/* FORM */}
                     <form
-                        className="grid grid-cols-1 sm:grid-cols-4 gap-2 max-w-2xl mx-auto mt-6"
                         onSubmit={onSearch}
+                        className="mx-auto mt-12 grid w-[min(1100px,96vw)] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[2fr_3fr_1.2fr] xl:grid-cols-[2fr_4fr_1fr] rounded-2xl border border-gray-200 bg-white p-5 shadow-xl"
                     >
-                        <input
-                            className="h-11 rounded-lg border px-3 focus:outline-none focus:ring-2 focus:ring-accent"
-                            placeholder="Ville (ex : Paris)"
-                            value={city}
-                            onChange={(e) => setCity(e.target.value)}
-                        />
-                        <input
-                            className="h-11 rounded-lg border px-3 focus:outline-none focus:ring-2 focus:ring-accent"
-                            type="date"
-                            value={from}
-                            onChange={(e) => setFrom(e.target.value)}
-                        />
-                        <input
-                            className="h-11 rounded-lg border px-3 focus:outline-none focus:ring-2 focus:ring-accent"
-                            type="date"
-                            value={to}
-                            onChange={(e) => setTo(e.target.value)}
-                        />
-                        <button className="h-11 rounded-lg bg-accent text-white font-semibold hover:bg-[#4338ca]">
-                            Rechercher
-                        </button>
+                        <label className="flex flex-col gap-1 text-left">
+                            <span className="text-sm text-gray-600">Lieu</span>
+                            <input
+                                className="h-12 rounded-lg border border-gray-300 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                                placeholder="Ville, aéroport, adresse…"
+                                value={city}
+                                onChange={(e) => setCity(e.target.value)}
+                            />
+                        </label>
+
+                        <div className="sm:col-span-1">
+                            <span className="sr-only">Dates</span>
+                            <DateRangePicker value={dates} onChange={setDates} />
+                        </div>
+
+                        <div className="flex items-end">
+                            <button className="h-12 w-full rounded-lg bg-accent text-white text-lg font-semibold hover:bg-[#4338ca] transition">
+                                Rechercher
+                            </button>
+                        </div>
                     </form>
 
-                    <small className="block text-gray-500 mt-2">
-                        Astuce : essaye “Paris” pour tester
+                    <small className="mt-4 block text-gray-500 text-sm">
+                        Astuce : essaie “Paris” pour tester
                     </small>
                 </div>
             </section>
 
             {/* COMMENT ÇA MARCHE */}
-            <section id="how" className="py-14 text-center">
-                <div className="container-pk">
-                    <h2 className="text-2xl font-semibold">Comment ça marche</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mt-6">
-                        <div className="p-5 border rounded-xl bg-white shadow-sm hover:shadow-md transition">
-                            <h3 className="font-semibold text-accent mb-1">1. Cherche</h3>
-                            <p className="text-gray-600">Entre une ville et des dates.</p>
+            <section id="how" className="py-28">
+                <div className="mx-auto w-[min(1200px,92vw)] px-6 text-center">
+                    <h2 className="text-4xl md:text-5xl font-semibold">Comment ça marche</h2>
+                    <p className="text-gray-600 mt-3 max-w-2xl mx-auto text-lg">
+                        En trois étapes simples, tu réserves ton prochain trajet.
+                    </p>
+
+                    <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-[1200px] mx-auto">
+                        <div className="p-8 border rounded-3xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.08)] transition">
+                            <h3 className="font-semibold text-accent text-xl mb-2">1. Cherche</h3>
+                            <p className="text-gray-600">Saisis un lieu et des dates, découvre les véhicules disponibles autour de toi.</p>
                         </div>
-                        <div className="p-5 border rounded-xl bg-white shadow-sm hover:shadow-md transition">
-                            <h3 className="font-semibold text-accent mb-1">2. Réserve</h3>
-                            <p className="text-gray-600">Paiement en ligne sécurisé.</p>
+                        <div className="p-8 border rounded-3xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.08)] transition">
+                            <h3 className="font-semibold text-accent text-xl mb-2">2. Réserve</h3>
+                            <p className="text-gray-600">Paie en ligne en toute sécurité, reçois ta confirmation immédiate.</p>
                         </div>
-                        <div className="p-5 border rounded-xl bg-white shadow-sm hover:shadow-md transition">
-                            <h3 className="font-semibold text-accent mb-1">3. Roule</h3>
-                            <p className="text-gray-600">Récupère le véhicule et pars serein.</p>
+                        <div className="p-8 border rounded-3xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.08)] transition">
+                            <h3 className="font-semibold text-accent text-xl mb-2">3. Roule</h3>
+                            <p className="text-gray-600">Récupère la voiture à l’heure choisie et profite de ton trajet sereinement.</p>
                         </div>
                     </div>
                 </div>
             </section>
 
             {/* FOOTER */}
-            <footer className="text-center text-gray-500 border-t border-gray-200 py-6">
-                © {new Date().getFullYear()} PartiKar — Tous droits réservés.
+            <footer className="border-t border-gray-200">
+                <div className="mx-auto w-[min(1200px,92vw)] px-6 py-10 text-center text-gray-500 text-sm">
+                    © {new Date().getFullYear()} PartiKar — Tous droits réservés.
+                </div>
             </footer>
-        </>
+        </main>
     );
 }
