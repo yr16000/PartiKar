@@ -1,12 +1,15 @@
 {
-  "name": "my-react-app",
-  "version": "0.1.0",
+  "name": "partikar-frontend",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "axios": "^1.7.5",
+    "daisyui": "^4.12.10"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
@@ -20,17 +23,10 @@
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+    "extends": ["react-app", "react-app/jest"]
   },
   "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
+    "production": [">0.2%", "not dead", "not op_mini all"],
     "development": [
       "last 1 chrome version",
       "last 1 firefox version",
