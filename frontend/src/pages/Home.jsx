@@ -33,7 +33,7 @@ export default function Home() {
                 <div className="container-pk">
                     <h1 className="text-4xl font-bold">Location de voitures entre particuliers</h1>
                     <p className="text-gray-600 mt-2">
-                        Rapide, simple et sécurisé. Trouve une voiture près de chez toi.
+                        Rapide, . Trouve une voiture près de chez toi.
                     </p>
 
                     <form
