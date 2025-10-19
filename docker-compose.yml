@@ -28,17 +28,17 @@ services:
       SPRING_DATASOURCE_PASSWORD: Partikar1234
 
   frontend:
-      build: ./frontend
-      container_name: frontend
-      ports:
-        - "3000:3000"
-      volumes:
-        - ./frontend:/app:delegated
-        - /app/node_modules
-      environment:
-        - HOST=0.0.0.0
-      depends_on:
-        - backend
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+    depends_on:
+      - backend
+
 
 volumes:
   db-postgres-data:
