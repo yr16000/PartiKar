@@ -1,10 +1,29 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4 */
+@import "tailwindcss";
 
-/* Utilitaires  */
-.btn { @apply px-4 py-2 rounded-lg font-semibold transition duration-200; }
-.btn-primary { @apply btn bg-accent text-white hover:bg-[#4338ca]; }
-.btn-outline { @apply btn border border-accent text-accent hover:bg-gray-50; }
-.container-pk { @apply mx-auto w-[min(1120px,96vw)] px-4; }
-.nav-link { @apply text-gray-600 font-medium hover:text-accent; }
+/* 🎨 Thème PartiKar directement dans le CSS */
+@theme {
+    --color-primary: #7c3aed;               /* bg-primary */
+    --color-primary-foreground: #ffffff;    /* text-primary-foreground */
+
+    --color-accent: #a78bfa;                /* bg-accent */
+    --color-accent-foreground: #111827;
+
+    --color-muted: #f3f4f6;                 /* bg-muted */
+    --color-muted-foreground: #6b7280;
+
+    /* (optionnel) tokens utiles */
+    --radius-lg: 1rem;
+    --radius-md: .75rem;
+    --radius-sm: .5rem;
+}
+
+/* Base légère */
+body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f7f8fa;
+    color: #0f172a;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
