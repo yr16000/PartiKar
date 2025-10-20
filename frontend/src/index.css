@@ -1,24 +1,23 @@
 /* Tailwind v4 */
 @import "tailwindcss";
 
-/* 🎨 Thème PartiKar directement dans le CSS */
-@theme {
-    --color-primary: #7c3aed;               /* bg-primary */
-    --color-primary-foreground: #ffffff;    /* text-primary-foreground */
 
-    --color-accent: #a78bfa;                /* bg-accent */
+@theme {
+    --color-primary: #7c3aed;
+    --color-primary-foreground: #ffffff;
+
+    --color-accent: #a78bfa;
     --color-accent-foreground: #111827;
 
-    --color-muted: #f3f4f6;                 /* bg-muted */
+    --color-muted: #f3f4f6;
     --color-muted-foreground: #6b7280;
 
-    /* (optionnel) tokens utiles */
     --radius-lg: 1rem;
     --radius-md: .75rem;
     --radius-sm: .5rem;
 }
 
-/* Base légère */
+
 body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     background: #f7f8fa;
