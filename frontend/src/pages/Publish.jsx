@@ -143,6 +143,7 @@ export default function Publish() {
                                     <Label className="block mb-2 text-sm font-medium">Année *</Label>
 
                                     {/* Sélecteur d’année shadcn */}
+                                    {/* Sélecteur d’année shadcn (sans recherche, vers le bas) */}
                                     <Popover open={open} onOpenChange={setOpen}>
                                         <PopoverTrigger asChild>
                                             <Button
@@ -158,9 +159,13 @@ export default function Publish() {
                                                 <Calendar className="ml-2 h-4 w-4 opacity-50" />
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-[280px] p-0">
+                                        <PopoverContent
+                                            className="w-[280px] p-0"
+                                            side="bottom"     // ✅ force l’ouverture vers le bas
+                                            align="start"     // ✅ aligne à gauche du bouton
+                                        >
                                             <Command>
-                                                <CommandInput placeholder="Rechercher une année..." />
+                                                {/* Supprimé le champ de recherche */}
                                                 <CommandList>
                                                     <CommandEmpty>Aucune année trouvée</CommandEmpty>
                                                     <CommandGroup>
@@ -180,6 +185,7 @@ export default function Publish() {
                                             </Command>
                                         </PopoverContent>
                                     </Popover>
+
                                 </div>
                             </div>
 
