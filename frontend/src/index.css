@@ -207,3 +207,7 @@
     .rounded-brand    { border-radius: var(--radius); }
     .rounded-brand-xl { border-radius: calc(var(--radius) + 0.5rem); }
 }
+
+html {
+    scroll-behavior: smooth;
+}

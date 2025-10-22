@@ -115,6 +115,7 @@ export default function Hero({ onSearch }) {
                                 avoidCollisions={false}
                                 className="z-[400] w-[min(92vw,360px)] sm:w-auto rounded-xl border border-gray-200 bg-white p-3 shadow-2xl"
                             >
+
                                 <Calendar
                                     mode="range"
                                     numberOfMonths={months}
@@ -126,12 +127,38 @@ export default function Hero({ onSearch }) {
                                         setRange({ from, to });
                                     }}
                                     defaultMonth={range?.from}
-                                    disabled={(d) => d < today}
+                                    disabled={[
+                                        (d) => d < today,        // comme avant
+                                        { outside: true },        // bloque les jours des autres mois si jamais visibles
+                                    ]}
+                                    showOutsideDays={false}     // n’affiche plus les jours des mois voisins
                                     initialFocus
-                                    className="[&_button.rdp-day]:rounded-md
-                             [&_.rdp-day_selected]:bg-indigo-600 [&_.rdp-day_selected]:text-white
-                             [&_.rdp-button:hover]:bg-indigo-600/10"
+
+                                    /* ↓ Styles */
+                                    className="
+    w-full
+    [&_.rdp-months]:w-full [&_.rdp-month]:w-full [&_.rdp-table]:w-full
+    [&_button.rdp-day]:rounded-md
+    [&_.rdp-day_selected]:bg-indigo-600 [&_.rdp-day_selected]:text-white
+    [&_.rdp-day_range_middle]:bg-indigo-600/10
+
+    /* supprime le 'carré' derrière début/fin */
+    [&_.rdp-day_range_start]:bg-transparent
+    [&_.rdp-day_range_end]:bg-transparent
+    [&_.rdp-day_range_start]:shadow-none
+    [&_.rdp-day_range_end]:shadow-none
+
+    /* hover doux */
+    [&_.rdp-button:hover]:bg-indigo-600/10
+  "
+                                    classNames={{
+                                        /* sécurité : on écrase les classes internes qui ajoutaient le fond carré */
+                                        range_start: "rounded-md bg-transparent",
+                                        range_end: "rounded-md bg-transparent",
+                                    }}
                                 />
+
+
                             </PopoverContent>
                         </Popover>
                     </div>

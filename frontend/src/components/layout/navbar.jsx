@@ -1,5 +1,5 @@
 import React from "react";
-import { Car, Menu, X, LogIn, UserPlus } from "lucide-react";
+import { Car, Menu, X, LogIn, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     Sheet,
@@ -14,19 +14,17 @@ export default function Navbar() {
     return (
         <header className="sticky top-0 z-[300] bg-background/90 backdrop-blur border-b border-border">
             <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 h-16 md:h-20 flex items-center justify-between gap-3 relative">
-                {/* === Menu burger mobile à gauche === */}
+                {/* Menu burger mobile à gauche  */}
                 <div className="md:hidden absolute left-4">
                     <MobileMenu />
                 </div>
 
-                {/*  Brand légèrement décalé à gauche */}
+                {/* Brand  */}
                 <a
                     href="/"
                     className="flex items-center justify-center gap-1 min-w-0 shrink-0 mx-auto md:mx-0 translate-x-[18px]"
                 >
-
-                {/* Logo plus grand sur mobile */}
-                    <span className="inline-grid place-items-center h-11 w-11 md:h-10 md:w-10 rounded-lg bg-primary/10">
+          <span className="inline-grid place-items-center h-11 w-11 md:h-10 md:w-10 rounded-lg bg-primary/10">
             <Car className="h-6 w-6 md:h-5 md:w-5 text-primary" />
           </span>
                     <span className="text-2xl md:text-2xl font-extrabold tracking-tight text-foreground truncate">
@@ -37,40 +35,43 @@ export default function Navbar() {
           </span>
                 </a>
 
-                {/* === Nav desktop === */}
+                {/*  Nav desktop  */}
                 <nav className="hidden md:flex items-center gap-8 text-sm min-w-0">
                     <a
-                        href="#how"
+                        href="/#how"
                         className="text-muted-foreground hover:text-foreground transition whitespace-nowrap"
                     >
                         Comment ça marche
                     </a>
                     <a
-                        href="#popular"
+                        href="/#popular"
                         className="text-muted-foreground hover:text-foreground transition whitespace-nowrap"
                     >
                         Voitures
                     </a>
                     <a
-                        href="#trust"
+                        href="/#trust"
                         className="text-muted-foreground hover:text-foreground transition whitespace-nowrap"
                     >
                         Confiance
                     </a>
                 </nav>
 
-                {/* === Actions desktop === */}
+                {/*  Actions desktop  */}
                 <div className="hidden md:flex items-center gap-3 shrink-0">
-                    <Button asChild variant="outline" className="h-10 px-4">
-                        <a href="/login" className="flex items-center gap-2">
-                            <LogIn className="h-4 w-4" />
-                            <span>Connexion</span>
+                    {/* Publier une voiture */}
+                    <Button asChild variant="outline" className="h-10 px-5">
+                        <a href="/publish" className="flex items-center gap-2">
+                            <PlusCircle className="h-4 w-4" />
+                            <span>Publier une voiture</span>
                         </a>
                     </Button>
+
+                    {/* Se connecter (bouton principal) */}
                     <Button asChild variant="brand" className="h-10 px-5">
-                        <a href="/register" className="flex items-center gap-2">
-                            <UserPlus className="h-4 w-4" />
-                            <span>Inscription</span>
+                        <a href="/login" className="flex items-center gap-2">
+                            <LogIn className="h-4 w-4" />
+                            <span>Se connecter</span>
                         </a>
                     </Button>
                 </div>
@@ -82,7 +83,7 @@ export default function Navbar() {
     );
 }
 
-/* ===== Menu latéral mobile (Sheet à gauche) ===== */
+/* == Menu latéral mobile (Sheet à gauche) == */
 function MobileMenu() {
     return (
         <Sheet>
@@ -119,13 +120,13 @@ function MobileMenu() {
                     </div>
                 </SheetHeader>
 
-                {/* Liens de navigation */}
+                {/*  Liens de navigation  */}
                 <nav className="p-4">
                     <ul className="grid gap-1">
                         <li>
                             <SheetClose asChild>
                                 <a
-                                    href="#how"
+                                    href="/#how"
                                     className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted"
                                 >
                                     Comment ça marche
@@ -135,7 +136,7 @@ function MobileMenu() {
                         <li>
                             <SheetClose asChild>
                                 <a
-                                    href="#popular"
+                                    href="/#popular"
                                     className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted"
                                 >
                                     Voitures
@@ -145,7 +146,7 @@ function MobileMenu() {
                         <li>
                             <SheetClose asChild>
                                 <a
-                                    href="#trust"
+                                    href="/#trust"
                                     className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted"
                                 >
                                     Confiance
@@ -154,24 +155,27 @@ function MobileMenu() {
                         </li>
                     </ul>
 
-                    {/* Actions */}
+                    {/*  Actions  */}
                     <div className="mt-4 grid gap-2">
+                        {/* Publier une voiture */}
                         <SheetClose asChild>
                             <Button asChild variant="outline" className="h-11">
-                                <a href="/login" className="flex items-center justify-center gap-2">
-                                    <LogIn className="h-4 w-4" />
-                                    <span>Connexion</span>
+                                <a
+                                    href="/publish"
+                                    className="flex items-center justify-center gap-2"
+                                >
+                                    <PlusCircle className="h-5 w-5" />
+                                    <span>Publier une voiture</span>
                                 </a>
                             </Button>
                         </SheetClose>
+
+                        {/* Se connecter (bouton principal) */}
                         <SheetClose asChild>
                             <Button asChild variant="brand" className="h-11">
-                                <a
-                                    href="/register"
-                                    className="flex items-center justify-center gap-2"
-                                >
-                                    <UserPlus className="h-4 w-4" />
-                                    <span>Inscription</span>
+                                <a href="/login" className="flex items-center justify-center gap-2">
+                                    <LogIn className="h-4 w-4" />
+                                    <span>Se connecter</span>
                                 </a>
                             </Button>
                         </SheetClose>
