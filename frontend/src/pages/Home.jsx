@@ -2,6 +2,7 @@ import React from "react";
 import Navbar from "../components/layout/navbar";
 import Footer from "../components/layout/footer";
 import Faq from "../components/layout/faq";
+import Hero from "../components/layout/hero";
 
 
 // shadcn/ui
@@ -24,6 +25,7 @@ export default function Home() {
     return (
         <main className="min-h-screen bg-background text-foreground">
             <Navbar />
+            <Hero />
 
 
             {/* COMMENT ÇA MARCHE */}
