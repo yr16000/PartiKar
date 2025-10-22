@@ -1,6 +1,7 @@
 import React from "react";
 import { Car, Menu, X, LogIn, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import {
     Sheet,
     SheetTrigger,
@@ -69,10 +70,10 @@ export default function Navbar() {
 
                     {/* Se connecter (bouton principal) */}
                     <Button asChild variant="brand" className="h-10 px-5">
-                        <a href="/login" className="flex items-center gap-2">
+                        <Link to="/login" className="flex items-center gap-2">
                             <LogIn className="h-4 w-4" />
                             <span>Se connecter</span>
-                        </a>
+                        </Link>
                     </Button>
                 </div>
 
@@ -160,13 +161,12 @@ function MobileMenu() {
                         {/* Publier une voiture */}
                         <SheetClose asChild>
                             <Button asChild variant="outline" className="h-11">
-                                <a
-                                    href="/publish"
+                                <Link to="/publish"
                                     className="flex items-center justify-center gap-2"
                                 >
                                     <PlusCircle className="h-5 w-5" />
                                     <span>Publier une voiture</span>
-                                </a>
+                                </Link>
                             </Button>
                         </SheetClose>
 
