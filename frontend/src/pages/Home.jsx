@@ -1,5 +1,5 @@
 import React from "react";
-import Navbar from "../components/layout/navbar";
+import Header from "../components/layout/header.jsx";
 import Footer from "../components/layout/footer";
 import Faq from "../components/layout/faq";
 import Hero from "../components/layout/hero";
@@ -25,7 +25,7 @@ import {
 export default function Home() {
     return (
         <main className="min-h-screen bg-background text-foreground">
-            <Navbar />
+            <Header />
             <Hero />
 
 
@@ -86,7 +86,7 @@ export default function Home() {
                         <div className="relative mt-0 lg:mt-14 xl:mt-16">
                             <div className="aspect-[4/3] w-full rounded-3xl overflow-hidden border border-gray-200 shadow-lg bg-white">
                                 <img
-                                    src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=1920&auto=format&fit=crop"
+                                    src="https://journalauto.com/wp-content/uploads/2024/07/Sans-titre-32.jpg"
                                     alt="Location de voiture — expérience fluide"
                                     className="h-full w-full object-cover"
                                 />
@@ -99,11 +99,11 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* CONFIANCE & SÉCURITÉ */}
+            {/* CONFIANCE et SÉCURITÉ */}
             <section id="trust" className="py-20 bg-card border-t border-border">
                 <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
                     <h2 className="text-3xl md:text-4xl font-semibold text-center">
-                        Confiance & sécurité
+                        Confiance et sécurité
                     </h2>
                     <p className="text-muted-foreground text-center mt-2 max-w-2xl mx-auto">
                         Chaque location est encadrée par une assurance complète, un support 24/7 et

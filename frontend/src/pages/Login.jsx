@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import Navbar from "../components/layout/navbar";
+import Header from "../components/layout/header.jsx";
 import Footer from "../components/layout/footer";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -124,7 +124,7 @@ export default function Login() {
 
     return (
         <main className="min-h-screen flex flex-col bg-background text-foreground">
-            <Navbar />
+            <Header />
 
             {/* SECTION FORM */}
             <section className="flex-1 flex items-center justify-center py-16 px-4">
