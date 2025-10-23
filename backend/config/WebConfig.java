@@ -1,4 +1,4 @@
-package com.partikar.config;
+/**package com.partikar.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,4 +38,4 @@ public class WebConfig {
 
         return source;
     }
-}
+}**/

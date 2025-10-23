@@ -9,6 +9,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 @Entity
 @Table(name = "utilisateurs")
 @EntityListeners(AuditingEntityListener.class) // pour activer l'auditing (création/modification automatique des dates)
@@ -49,12 +52,12 @@ public class User {
     private BigDecimal credits;
 
 
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
+    @CreationTimestamp
+    @Column(name = "cree_le", nullable = false, updatable = false)
     private LocalDateTime creeLe;
 
-    @LastModifiedDate
-    @Column(nullable = false)
+    @UpdateTimestamp
+    @Column(name = "maj_le")
     private LocalDateTime majLe;
 
     // Getters, Setters...
