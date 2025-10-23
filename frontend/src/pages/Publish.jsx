@@ -161,8 +161,9 @@ export default function Publish() {
                                         </PopoverTrigger>
                                         <PopoverContent
                                             className="w-[280px] p-0"
-                                            side="bottom"     // ✅ force l’ouverture vers le bas
-                                            align="start"     // ✅ aligne à gauche du bouton
+                                            side="bottom"
+                                            align="start"
+                                            avoidCollisions={false}
                                         >
                                             <Command>
                                                 {/* Supprimé le champ de recherche */}

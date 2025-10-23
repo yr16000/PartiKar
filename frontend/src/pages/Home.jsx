@@ -3,6 +3,7 @@ import Navbar from "../components/layout/navbar";
 import Footer from "../components/layout/footer";
 import Faq from "../components/layout/faq";
 import Hero from "../components/layout/hero";
+import { Link } from "react-router-dom";
 
 
 // shadcn/ui
@@ -164,9 +165,10 @@ export default function Home() {
                                 </p>
                             </div>
                             <div className="flex flex-col sm:flex-row items-center gap-3">
-                                <Button variant="brand" className="h-11 px-6">
-                                    Publier une voiture
+                                <Button asChild variant="brand" className="h-11 px-6">
+                                    <Link to="/publish">Publier une voiture</Link>
                                 </Button>
+
                                 <Button variant="outline" className="h-11 px-6">
                                     En savoir plus
                                 </Button>

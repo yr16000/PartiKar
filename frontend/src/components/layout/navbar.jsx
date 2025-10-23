@@ -1,6 +1,7 @@
 import React from "react";
 import { Car, Menu, X, LogIn, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HashLink } from "react-router-hash-link";
 import { Link } from "react-router-dom";
 import {
     Sheet,
@@ -38,12 +39,13 @@ export default function Navbar() {
 
                 {/*  Nav desktop  */}
                 <nav className="hidden md:flex items-center gap-8 text-sm min-w-0">
-                    <a
-                        href="/#how"
+                    <HashLink
+                        smooth
+                        to="/#how"
                         className="text-muted-foreground hover:text-foreground transition whitespace-nowrap"
                     >
                         Comment ça marche
-                    </a>
+                    </HashLink>
                     <a
                         href="/#popular"
                         className="text-muted-foreground hover:text-foreground transition whitespace-nowrap"
@@ -146,12 +148,13 @@ function MobileMenu() {
                         </li>
                         <li>
                             <SheetClose asChild>
-                                <a
-                                    href="/#trust"
+                                <HashLink
+                                    smooth
+                                    to="/#trust"
                                     className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted"
                                 >
                                     Confiance
-                                </a>
+                                </HashLink>
                             </SheetClose>
                         </li>
                     </ul>
