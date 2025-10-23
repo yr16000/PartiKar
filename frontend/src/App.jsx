@@ -1,6 +1,6 @@
 // File: src/App.jsx
 import React, { useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 
 // Pages principales
 import Home from "./pages/Home";
@@ -18,7 +18,7 @@ function ScrollManager() {
                 const el = document.querySelector(hash);
                 if (el) {
                     const yOffset = -100; // hauteur navbar sticky
-                    const y = el.getBoundingClientRect().top  + yOffset;
+                    const y = el.getBoundingClientRect().top + window.scrollY + yOffset;
                     window.scrollTo({ top: y, behavior: "smooth" });
                 }
             });
@@ -33,11 +33,11 @@ function ScrollManager() {
 
 export default function App() {
     return (
-        <BrowserRouter>
+        <>
             <ScrollManager />
 
             <Routes>
-                {/* PAGE D’ACCUEIL */}
+                {/* PAGE D'ACCUEIL */}
                 <Route path="/" element={<Home />} />
 
                 {/* PAGE LOGIN */}
@@ -48,6 +48,6 @@ export default function App() {
 
 
             </Routes>
-        </BrowserRouter>
+        </>
     );
 }
