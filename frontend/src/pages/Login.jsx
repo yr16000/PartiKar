@@ -88,7 +88,14 @@ export default function Login() {
             const payload =
                 mode === "login"
                     ? { email, password }
-                    : { nom, prenom, dateNaissance, email, password };
+                    : { nom,
+                        prenom,
+                        dateDeNaissance: (() => {
+                            const [jj, mm, aaaa] = dateNaissance.split("/");
+                            return `${aaaa}-${mm}-${jj}`;
+                        })(),
+                        email,
+                        password };
 
             const res = await fetch(endpoint, {
                 method: "POST",
