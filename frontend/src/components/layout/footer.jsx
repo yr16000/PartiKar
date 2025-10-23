@@ -1,5 +1,4 @@
 import React from "react"
-import { Car } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function Footer() {
@@ -11,9 +10,7 @@ export default function Footer() {
                     {/* Logo + description */}
                     <div>
                         <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-primary/10 grid place-items-center text-primary">
-                                <Car className="h-4 w-4" />
-                            </div>
+
                             <span className="text-xl font-bold text-foreground">
                 Parti
                 <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">

@@ -1,5 +1,5 @@
 import React from "react";
-import { Car, Menu, X, LogIn, PlusCircle } from "lucide-react";
+import { Menu, X, LogIn, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HashLink } from "react-router-hash-link";
 import { Link } from "react-router-dom";
@@ -16,29 +16,29 @@ export default function Navbar() {
     return (
         <header className="sticky top-0 z-[300] bg-background/90 backdrop-blur border-b border-border">
             <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 h-16 md:h-20 flex items-center justify-between gap-3 relative">
-                {/* Menu burger mobile à gauche  */}
-                <div className="md:hidden absolute left-4">
+                {/* Burger mobile à gauche */}
+                <div className="md:hidden absolute left-4 top-1/2 -translate-y-1/2">
                     <MobileMenu />
                 </div>
 
-                {/* Brand  */}
+                {/* Brand : centré seulement sur mobile */}
                 <a
                     href="/"
-                    className="flex items-center justify-center gap-1 min-w-0 shrink-0 mx-auto md:mx-0 translate-x-[18px]"
+                    className="
+            absolute left-1/2 -translate-x-1/2
+            md:static md:left-auto md:translate-x-0
+            flex items-center justify-center gap-1 min-w-0 shrink-0
+          "
+                    aria-label="PartiKar - Accueil"
                 >
-          <span className="inline-grid place-items-center h-11 w-11 md:h-10 md:w-10 rounded-lg bg-primary/10">
-            <Car className="h-6 w-6 md:h-5 md:w-5 text-primary" />
-          </span>
-                    <span className="text-2xl md:text-2xl font-extrabold tracking-tight text-foreground truncate">
-            Parti
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Kar
-            </span>
+          <span className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground truncate">
+            Parti<span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Kar</span>
           </span>
                 </a>
 
-                {/*  Nav desktop  */}
-                <nav className="hidden md:flex items-center gap-8 text-sm min-w-0">
+                {/* Nav desktop */}
+
+                <nav className="hidden md:flex items-center gap-8 text-[13px] md:text-[14px] min-w-0 font-medium">
                     <HashLink
                         smooth
                         to="/#how"
@@ -60,17 +60,15 @@ export default function Navbar() {
                     </a>
                 </nav>
 
-                {/*  Actions desktop  */}
+
+                {/* Actions desktop */}
                 <div className="hidden md:flex items-center gap-3 shrink-0">
-                    {/* Publier une voiture */}
                     <Button asChild variant="outline" className="h-10 px-5">
                         <a href="/publish" className="flex items-center gap-2">
                             <PlusCircle className="h-4 w-4" />
                             <span>Publier une voiture</span>
                         </a>
                     </Button>
-
-                    {/* Se connecter (bouton principal) */}
                     <Button asChild variant="brand" className="h-10 px-5">
                         <Link to="/login" className="flex items-center gap-2">
                             <LogIn className="h-4 w-4" />
@@ -78,15 +76,12 @@ export default function Navbar() {
                         </Link>
                     </Button>
                 </div>
-
-                {/* Placeholder droite pour centrer visuellement */}
-                <div className="md:hidden w-10" />
             </div>
         </header>
     );
 }
 
-/* == Menu latéral mobile (Sheet à gauche) == */
+/*  Menu latéral mobile  */
 function MobileMenu() {
     return (
         <Sheet>
@@ -97,22 +92,11 @@ function MobileMenu() {
                 </Button>
             </SheetTrigger>
 
-            <SheetContent
-                side="left"
-                className="w-[88vw] sm:w-[360px] p-0 border-r border-border"
-            >
+            <SheetContent side="left" className="w-[88vw] sm:w-[360px] p-0 border-r border-border">
                 <SheetHeader className="p-4 border-b border-border">
                     <div className="flex items-center justify-between">
-                        <SheetTitle className="flex items-center gap-2">
-              <span className="inline-grid place-items-center h-9 w-9 rounded-lg bg-primary/10">
-                <Car className="h-5 w-5 text-primary" />
-              </span>
-                            <span className="font-extrabold text-lg">
-                Parti
-                <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Kar
-                </span>
-              </span>
+                        <SheetTitle className="font-extrabold text-2xl">
+                            Parti<span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Kar</span>
                         </SheetTitle>
                         <SheetClose asChild>
                             <Button variant="ghost" className="h-9 w-9 p-0">
@@ -123,25 +107,18 @@ function MobileMenu() {
                     </div>
                 </SheetHeader>
 
-                {/*  Liens de navigation  */}
                 <nav className="p-4">
                     <ul className="grid gap-1">
                         <li>
                             <SheetClose asChild>
-                                <a
-                                    href="/#how"
-                                    className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted"
-                                >
+                                <a href="/#how" className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted">
                                     Comment ça marche
                                 </a>
                             </SheetClose>
                         </li>
                         <li>
                             <SheetClose asChild>
-                                <a
-                                    href="/#popular"
-                                    className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted"
-                                >
+                                <a href="/#popular" className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted">
                                     Voitures
                                 </a>
                             </SheetClose>
@@ -159,21 +136,16 @@ function MobileMenu() {
                         </li>
                     </ul>
 
-                    {/*  Actions  */}
                     <div className="mt-4 grid gap-2">
-                        {/* Publier une voiture */}
                         <SheetClose asChild>
                             <Button asChild variant="outline" className="h-11">
-                                <Link to="/publish"
-                                    className="flex items-center justify-center gap-2"
-                                >
+                                <Link to="/publish" className="flex items-center justify-center gap-2">
                                     <PlusCircle className="h-5 w-5" />
                                     <span>Publier une voiture</span>
                                 </Link>
                             </Button>
                         </SheetClose>
 
-                        {/* Se connecter (bouton principal) */}
                         <SheetClose asChild>
                             <Button asChild variant="brand" className="h-11">
                                 <a href="/login" className="flex items-center justify-center gap-2">
