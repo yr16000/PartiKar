@@ -12,7 +12,7 @@ import {
     SheetClose,
 } from "@/components/ui/sheet";
 
-export default function Navbar() {
+export default function Header() {
     return (
         <header className="sticky top-0 z-[300] bg-background/90 backdrop-blur border-b border-border">
             <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 h-16 md:h-20 flex items-center justify-between gap-3 relative">

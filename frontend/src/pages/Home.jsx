@@ -1,5 +1,5 @@
 import React from "react";
-import Navbar from "../components/layout/navbar";
+import Header from "../components/layout/header.jsx";
 import Footer from "../components/layout/footer";
 import Faq from "../components/layout/faq";
 import Hero from "../components/layout/hero";
@@ -25,7 +25,7 @@ import {
 export default function Home() {
     return (
         <main className="min-h-screen bg-background text-foreground">
-            <Navbar />
+            <Header />
             <Hero />
 
 
