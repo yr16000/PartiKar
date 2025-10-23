@@ -15,7 +15,7 @@ export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
-    // Champs inscription
+
     const [nom, setNom] = useState("");
     const [prenom, setPrenom] = useState("");
     const [dateNaissance, setDateNaissance] = useState(""); // JJ/MM/AAAA
