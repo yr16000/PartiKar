@@ -86,7 +86,7 @@ export default function Home() {
                         <div className="relative mt-0 lg:mt-14 xl:mt-16">
                             <div className="aspect-[4/3] w-full rounded-3xl overflow-hidden border border-gray-200 shadow-lg bg-white">
                                 <img
-                                    src="https://journalauto.com/wp-content/uploads/2024/07/Sans-titre-32.jpg"
+                                    src="https://static-images.lpnt.fr/cd-cw809/images/2024/03/29/26310863lpw-26311680-mega-une-jpg_10206716.jpg"
                                     alt="Location de voiture — expérience fluide"
                                     className="h-full w-full object-cover"
                                 />

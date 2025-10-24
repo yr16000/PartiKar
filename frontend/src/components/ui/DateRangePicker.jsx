@@ -1,4 +1,3 @@
-// frontend/src/components/ui/DateRangePicker.jsx
 import React, { useState, useRef, useEffect } from "react"
 
 function formatDate(d) {
