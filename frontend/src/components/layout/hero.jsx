@@ -60,7 +60,7 @@ export default function Hero({ onSearch }) {
                 </h1>
 
                 <p className="mt-5 text-gray-600 text-base sm:text-lg md:text-xl max-w-3xl mx-auto">
-                    Louez une voiture près de chez vous — Simple, économique et flexible.
+                    Louez une voiture près de chez vous. C'est simple, économique et flexible.
                 </p>
 
                 {/* FORMULAIRE RESPONSIVE */}

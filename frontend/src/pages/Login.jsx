@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
-import Header from "../components/layout/header.jsx";
-import Footer from "../components/layout/footer";
+import Header from "@/components/layout/header";
+import Footer from "@/components/layout/footer";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,19 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Car } from "lucide-react";
 
 export default function Login() {
-    // "login" | "register"
     const [mode, setMode] = useState("login");
-
-    // Champs communs
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-
-
     const [nom, setNom] = useState("");
     const [prenom, setPrenom] = useState("");
-    const [dateNaissance, setDateNaissance] = useState(""); // JJ/MM/AAAA
-
-    // UI
+    const [dateNaissance, setDateNaissance] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState("");
 
@@ -29,42 +22,32 @@ export default function Login() {
         [mode]
     );
 
-    // Auto-format JJ/MM/AAAA + filtrage des caractères non numériques
     function handleBirthdateChange(e) {
-        const digits = e.target.value.replace(/\D/g, "").slice(0, 8); // max 8 chiffres
+        const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
         let formatted = digits;
         if (digits.length >= 3 && digits.length <= 4) {
             formatted = digits.slice(0, 2) + "/" + digits.slice(2);
         } else if (digits.length >= 5) {
-            formatted = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+            formatted =
+                digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
         }
         setDateNaissance(formatted);
     }
 
-    // Vérifie format + date réelle (calendrier, bissextile, etc.)
     function isValidBirthdate(jjmmaaaa) {
-        // Format strict
         const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(jjmmaaaa);
         if (!m) return false;
-        const jj = parseInt(m[1], 10);
-        const mm = parseInt(m[2], 10);
-        const yyyy = parseInt(m[3], 10);
-
-        // Bornes basiques
+        const [_, jj, mm, yyyy] = m.map(Number);
         if (mm < 1 || mm > 12) return false;
-        if (yyyy < 1900 || yyyy > new Date().getFullYear()) return false;
-
-        // Nombre de jours par mois (bissextile géré)
+        const currentYear = new Date().getFullYear();
+        if (yyyy < 1900 || yyyy > currentYear) return false;
         const isLeap = (yyyy % 4 === 0 && yyyy % 100 !== 0) || yyyy % 400 === 0;
-        const daysInMonth = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        const daysInMonth = [
+            31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+        ];
         if (jj < 1 || jj > daysInMonth[mm - 1]) return false;
-
-        // Optionnel: empêcher dates futures
         const d = new Date(yyyy, mm - 1, jj);
-        const today = new Date();
-        if (d > today) return false;
-
-        return true;
+        return d <= new Date();
     }
 
     async function handleSubmit(e) {
@@ -73,48 +56,57 @@ export default function Login() {
         setLoading(true);
 
         try {
-            const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+            const endpoint =
+                mode === "login" ? "/api/auth/login" : "/api/auth/register";
 
-            if (mode === "register") {
-                // Vérifs frontend de base
-                if (!nom || !prenom || !dateNaissance || !email || !password) {
-                    throw new Error("Merci de remplir tous les champs obligatoires.");
-                }
-                if (!isValidBirthdate(dateNaissance)) {
-                    throw new Error("La date de naissance est invalide (utilise JJ/MM/AAAA).");
-                }
+            let payload;
+            if (mode === "login") {
+                if (!email || !password)
+                    throw new Error("Merci de remplir tous les champs.");
+                payload = { email: email.trim().toLowerCase(), password };
+            } else {
+                if (!nom || !prenom || !dateNaissance || !email || !password)
+                    throw new Error("Merci de remplir tous les champs.");
+                if (!isValidBirthdate(dateNaissance))
+                    throw new Error("Date de naissance invalide (JJ/MM/AAAA).");
+
+                const [jj, mm, aaaa] = dateNaissance.split("/");
+                payload = {
+                    nom: nom.trim(),
+                    prenom: prenom.trim(),
+                    dateDeNaissance: `${aaaa}-${mm}-${jj}`,
+                    email: email.trim().toLowerCase(),
+                    password,
+                };
             }
-
-            const payload =
-                mode === "login"
-                    ? { email, password }
-                    : { nom,
-                        prenom,
-                        dateDeNaissance: (() => {
-                            const [jj, mm, aaaa] = dateNaissance.split("/");
-                            return `${aaaa}-${mm}-${jj}`;
-                        })(),
-                        email,
-                        password };
 
             const res = await fetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include", // cookies HttpOnly (JWT côté serveur)
+                credentials: "include",
                 body: JSON.stringify(payload),
             });
 
             if (!res.ok) {
-                let message = "Une erreur est survenue. Réessaie.";
+                let message = "Une erreur est survenue.";
                 try {
                     const data = await res.json();
                     if (data?.message) message = data.message;
-                } catch {}
+                } catch {
+                    const text = await res.text();
+                    if (text) message = text;
+                }
                 throw new Error(message);
             }
 
-            // Succès : redirection (à adapter)
-            window.location.href = mode === "login" ? "/profile" : "/publish";
+            // ✅ On lit le body et on stocke le token JWT
+            const data = await res.json().catch(() => ({}));
+            if (data && data.token) {
+                localStorage.setItem("token", data.token);
+            }
+
+            // ✅ Redirection vers /profile pour login ET inscription
+            window.location.href = "/profile";
         } catch (e) {
             setErr(e.message || "Erreur réseau");
         } finally {
@@ -126,7 +118,6 @@ export default function Login() {
         <main className="min-h-screen flex flex-col bg-background text-foreground">
             <Header />
 
-            {/* SECTION FORM */}
             <section className="flex-1 flex items-center justify-center py-16 px-4">
                 <Card className="w-full max-w-md border border-border bg-card shadow-brand-md">
                     <CardHeader className="text-center">
@@ -135,20 +126,21 @@ export default function Login() {
                                 <Car className="h-5 w-5" />
                             </div>
                         </div>
+
                         <CardTitle className="text-2xl font-bold">{title}</CardTitle>
                         <p className="text-muted-foreground text-sm mt-1">
                             {mode === "login"
                                 ? "Heureux de vous revoir."
-                                : "Rejoignez PartiKar et commencez en quelques secondes."}
+                                : "Rejoignez PartiKar en quelques secondes."}
                         </p>
 
-                        {/* Segmented control */}
                         <div className="mt-4 grid grid-cols-2 rounded-lg border border-border overflow-hidden">
                             <Button
                                 type="button"
                                 variant={mode === "login" ? "brand" : "ghost"}
                                 className="rounded-none h-10"
                                 onClick={() => setMode("login")}
+                                disabled={loading}
                             >
                                 Connexion
                             </Button>
@@ -157,6 +149,7 @@ export default function Login() {
                                 variant={mode === "register" ? "brand" : "ghost"}
                                 className="rounded-none h-10"
                                 onClick={() => setMode("register")}
+                                disabled={loading}
                             >
                                 Inscription
                             </Button>
@@ -173,10 +166,10 @@ export default function Login() {
                                             <Input
                                                 type="text"
                                                 placeholder="Dupont"
-                                                autoComplete="family-name"
                                                 value={nom}
                                                 onChange={(e) => setNom(e.target.value)}
                                                 required
+                                                disabled={loading}
                                             />
                                         </div>
                                         <div>
@@ -184,10 +177,10 @@ export default function Login() {
                                             <Input
                                                 type="text"
                                                 placeholder="Jean"
-                                                autoComplete="given-name"
                                                 value={prenom}
                                                 onChange={(e) => setPrenom(e.target.value)}
                                                 required
+                                                disabled={loading}
                                             />
                                         </div>
                                     </div>
@@ -204,6 +197,7 @@ export default function Login() {
                                             onChange={handleBirthdateChange}
                                             maxLength={10}
                                             required
+                                            disabled={loading}
                                         />
                                     </div>
                                 </>
@@ -214,10 +208,10 @@ export default function Login() {
                                 <Input
                                     type="email"
                                     placeholder="exemple@mail.com"
-                                    autoComplete="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
+                                    disabled={loading}
                                 />
                             </div>
 
@@ -226,10 +220,10 @@ export default function Login() {
                                 <Input
                                     type="password"
                                     placeholder="••••••••"
-                                    autoComplete={mode === "login" ? "current-password" : "new-password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
+                                    disabled={loading}
                                 />
                             </div>
 

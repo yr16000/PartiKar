@@ -3,7 +3,7 @@ package com.partikar.auth;
 import com.partikar.auth.dto.AuthResponse;
 import com.partikar.auth.dto.LoginRequest;
 import com.partikar.auth.dto.RegisterRequest;
-import com.partikar.auth.security.JwtService;
+import com.partikar.security.JwtService;
 import com.partikar.user.User;
 import com.partikar.user.UserRepository;
 import org.springframework.security.authentication.AuthenticationManager;

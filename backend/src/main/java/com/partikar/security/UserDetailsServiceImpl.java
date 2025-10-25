@@ -1,4 +1,4 @@
-package com.partikar.auth.security;
+package com.partikar.security;
 
 import com.partikar.user.User;
 import com.partikar.user.UserRepository;

@@ -1,4 +1,4 @@
-package com.partikar.auth.security;
+package com.partikar.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

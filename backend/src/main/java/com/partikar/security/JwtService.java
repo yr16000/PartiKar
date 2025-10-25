@@ -1,4 +1,4 @@
-package com.partikar.auth.security;
+package com.partikar.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

@@ -5,6 +5,7 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Publish from "./pages/Publish";
+import Profile from "./pages/Profile";
 
 
 function ScrollManager() {
@@ -44,6 +45,9 @@ export default function App() {
 
                 {/* PAGE PUBLIER UNE ANNONCE */}
                 <Route path="/publish" element={<Publish />} />
+
+                {/* PAGE PROFIL UTILISATEUR */}
+                <Route path="/profile" element={<Profile />} />
 
 
             </Routes>
