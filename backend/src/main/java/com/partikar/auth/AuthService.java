@@ -49,10 +49,15 @@ public class AuthService {
             throw new IllegalStateException("Cet email est déjà utilisé");
         }
 
-        //Vérifier l'age (min 18 ans)
+        //Vérifier l'age (min 17 ans)
         LocalDate dateDeNaissance = request.dateDeNaissance();
-        if (Period.between(dateDeNaissance, LocalDate.now()).getYears() < 18) {
-            throw new IllegalStateException("L'utilisateur doit avoir au moins 18 ans");
+        if (Period.between(dateDeNaissance, LocalDate.now()).getYears() < 17) {
+            throw new IllegalStateException("L'utilisateur doit avoir au moins 17 ans");
+        }
+
+        String password= request.password();
+        if (password.length() < 8) {
+            throw new IllegalStateException("Le mot de passe doit faire au moins 8 caractères");
         }
 
         User user = new User();

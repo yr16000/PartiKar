@@ -225,6 +225,9 @@ export default function Login() {
                                     required
                                     disabled={loading}
                                 />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Doit contenir au moins 8 caractères.
+                                </p>
                             </div>
 
                             {err && <p className="text-destructive text-sm">{err}</p>}
