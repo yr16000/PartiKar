@@ -19,12 +19,12 @@ public class Voiture {
     @Column(name = "voiture_id") // Explicite le nom de colonne (bonne pratique)
     private Long id;
 
-    // --- Relation avec l'utilisateur (Propriétaire) ---
+    //  Relation avec l'utilisateur (Propriétaire)
     @ManyToOne(fetch = FetchType.LAZY) // LAZY est souvent mieux pour les performances
     @JoinColumn(name = "proprietaire_id", nullable = false) // Nom de la colonne clé étrangère
     private User proprietaire;
 
-    // --- Champs de base ---
+    //  Champs de base
     @Column(nullable = false)
     private String marque;
 
@@ -56,7 +56,7 @@ public class Voiture {
     @Column(nullable = false)
     private String statut; // Ex: ACTIVE, INACTIVE, EN_VALIDATION
 
-    // --- Champs ajoutés/modifiés ---
+    //  Champs ajoutés/modifiés
 
     @Column(nullable = false)
     private BigDecimal prixParJour; // Utilise BigDecimal pour l'argent/les prix
@@ -68,7 +68,7 @@ public class Voiture {
     @Column(nullable = false)
     private Boolean climatisation; // true ou false
 
-    // --- Champs Géolocalisation ---
+    //  Champs Géolocalisation
     @Column(nullable = true)
     private String localisation; // L'adresse complète (ex: "10 Rue de Rivoli, Paris")
 
@@ -78,7 +78,7 @@ public class Voiture {
     @Column(nullable = true)
     private BigDecimal longitude; // Coordonnée GPS
 
-    // --- Champs Auditing ---
+    //  Champs Auditing
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime creeLe;
@@ -87,16 +87,16 @@ public class Voiture {
     @Column(nullable = false)
     private LocalDateTime majLe;
 
-    // --- Constructeur vide (obligatoire pour JPA) ---
+    //  Constructeur vide (obligatoire pour JPA)
     public Voiture() {
     }
 
-    // --- Enum pour BoiteVitesse (à mettre dans ce fichier ou un fichier séparé) ---
+    //  Enum pour BoiteVitesse (à mettre dans ce fichier ou un fichier séparé)
     public enum BoiteVitesse {
         MANUELLE, AUTOMATIQUE
     }
 
-    // --- Getters et Setters (Générés par l'IDE) ---
+    //  Getters et Setters (Générés par l'IDE)
     // ... Ajoute tous les getters et setters pour tous les champs ...
 
     public Long getId() {
