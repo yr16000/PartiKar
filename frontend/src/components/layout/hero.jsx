@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Input } from "@/components/ui/input";
+import PlaceAutocomplete from "@/components/ui/PlaceAutocomplete";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -21,6 +21,7 @@ export default function Hero({ onSearch }) {
     }, []);
 
     const [city, setCity] = useState("");
+    const [cityCoords, setCityCoords] = useState(null);
     const [range, setRange] = useState({ from: today, to: today });
     const [hour, setHour] = useState("10:00");
     const [months, setMonths] = useState(1);
@@ -45,7 +46,7 @@ export default function Hero({ onSearch }) {
 
     function handleSubmit(e) {
         e.preventDefault();
-        const payload = { city, from: range.from, to: range.to, hour };
+        const payload = { city, from: range.from, to: range.to, hour, coords: cityCoords };
         onSearch ? onSearch(payload) : console.log(payload);
     }
 
@@ -78,13 +79,11 @@ export default function Hero({ onSearch }) {
                     {/* Lieu */}
                     <div className="flex flex-col text-left min-w-0">
                         <span className="text-sm text-gray-600 mb-1 leading-none">Lieu</span>
-                        <Input
-                            type="text"
-                            placeholder="Ville, adresse ou code postal"
+                        <PlaceAutocomplete
                             value={city}
-                            onChange={(e) => setCity(e.target.value)}
-                            className="h-12 w-full text-base leading-none border border-gray-300 rounded-lg px-4 shadow-sm
-             focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            onChange={(v) => { setCity(v); setCityCoords(null); }}
+                            onSelect={(item) => { setCity(item.label || ''); setCityCoords({ latitude: item.latitude, longitude: item.longitude }); }}
+                            placeholder="Ville, adresse ou code postal"
                         />
 
                     </div>

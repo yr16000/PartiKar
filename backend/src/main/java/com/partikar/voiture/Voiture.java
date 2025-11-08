@@ -32,9 +32,9 @@ public class Voiture {
     private String modele;
 
     @Column(nullable = false)
-    private Integer annee; // Utilise Integer pour les nombres
+    private Integer annee;
 
-    @Column(nullable = true) // Couleur peut être optionnelle
+    @Column(nullable = true)
     private String couleur;
 
     @Column(nullable = false, unique = true) // L'immatriculation doit être unique
