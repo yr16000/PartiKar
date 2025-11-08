@@ -6,88 +6,73 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.net.http.*;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Service minimal pour interroger Nominatim (OpenStreetMap) avec un cache en mémoire.
- * Usage: prototype/dev rapide et gratuit. Respectez les limites d'utilisation de Nominatim.
- */
 @Service
 public class GeocodeService {
 
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    // Cache simple : query -> (timestamp, json)
     private static class CacheEntry {
         final long ts;
         final List<GeocodeResult> results;
-
-        CacheEntry(long ts, List<GeocodeResult> results) {
-            this.ts = ts;
-            this.results = results;
-        }
+        CacheEntry(long ts, List<GeocodeResult> results) { this.ts = ts; this.results = results; }
     }
 
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
     private final long ttlMillis = 5 * 60 * 1000; // 5 minutes
 
     public List<GeocodeResult> search(String q, int limit) {
-        if (q == null) return List.of();
-        String key = q.trim().toLowerCase() + "|" + limit;
-        CacheEntry cached = cache.get(key);
+        if (q == null || q.trim().length() < 2) return List.of();
+        q = q.trim();
+
+        String key = q.toLowerCase() + "|" + limit;
         long now = Instant.now().toEpochMilli();
-        if (cached != null && (now - cached.ts) < ttlMillis) {
-            return cached.results;
-        }
+        CacheEntry cached = cache.get(key);
+        if (cached != null && (now - cached.ts) < ttlMillis) return cached.results;
 
         try {
-            String url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=" + limit + "&q=" + java.net.URLEncoder.encode(q, java.nio.charset.StandardCharsets.UTF_8);
+            // Recherche ULTRA RAPIDE sur les communes françaises
+            String url = "https://api-adresse.data.gouv.fr/search/"
+                    + "?q=" + java.net.URLEncoder.encode(q, java.nio.charset.StandardCharsets.UTF_8)
+                    + "&limit=" + Math.max(1, Math.min(limit, 8))
+                    + "&autocomplete=1";
+
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(url))
-                    .header("User-Agent", "PartiKar-Dev/1.0 (contact: dev@example.com)")
-                    .header("Accept-Language", "fr")
+                    .header("User-Agent", "PartiKar/1.0 (contact: contact@tonsite.fr)")
                     .GET()
                     .build();
 
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() != 200) {
-                return List.of();
-            }
+            if (resp.statusCode() != 200) return List.of();
 
             JsonNode root = mapper.readTree(resp.body());
-            List<GeocodeResult> results = new ArrayList<>();
-            for (JsonNode node : root) {
-                String display = node.path("display_name").asText(null);
-                double lat = node.path("lat").asDouble(0.0);
-                double lon = node.path("lon").asDouble(0.0);
-                JsonNode addr = node.path("address");
-                String city = null;
-                if (addr.has("city")) city = addr.get("city").asText();
-                else if (addr.has("town")) city = addr.get("town").asText();
-                else if (addr.has("village")) city = addr.get("village").asText();
-                else if (addr.has("county")) city = addr.get("county").asText();
-                String postcode = addr.has("postcode") ? addr.get("postcode").asText() : null;
-                String country = addr.has("country") ? addr.get("country").asText() : null;
-                String osmId = node.path("osm_id").asText("");
+            List<GeocodeResult> list = new ArrayList<>();
 
-                GeocodeResult r = new GeocodeResult(display, city, postcode, country, lat, lon, osmId);
-                results.add(r);
+            for (JsonNode f : root.path("features")) {
+                JsonNode props = f.path("properties");
+                String city = props.path("city").asText(null);
+                String postcode = props.path("postcode").asText(null);
+                String label = props.path("label").asText(null);
+
+                JsonNode geom = f.path("geometry");
+                double lon = geom.path("coordinates").get(0).asDouble(0.0);
+                double lat = geom.path("coordinates").get(1).asDouble(0.0);
+
+                // Comme ton front attend :
+                list.add(new GeocodeResult(label, city, postcode, "France", lat, lon, null));
             }
 
-            cache.put(key, new CacheEntry(now, results));
-            return results;
+            cache.put(key, new CacheEntry(now, list));
+            return list;
+
         } catch (IOException | InterruptedException e) {
-            // En cas d'erreur, retourner une liste vide
             return List.of();
         }
     }
 }
-
