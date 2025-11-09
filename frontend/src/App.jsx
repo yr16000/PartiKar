@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Publish from "./pages/Publish";
 import Profile from "./pages/Profile";
 import AnnonceDetails from "./pages/AnnonceDetails";
+import Search from "./pages/Search";
 
 
 function ScrollManager() {
@@ -51,6 +52,8 @@ export default function App() {
                 <Route path="/profile" element={<Profile />} />
 
                 <Route path="/annonces/:id" element={<AnnonceDetails />} />
+
+                <Route path="/search" element={<Search />} />
 
 
             </Routes>
