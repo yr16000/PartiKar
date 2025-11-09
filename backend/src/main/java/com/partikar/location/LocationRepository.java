@@ -9,6 +9,7 @@ import java.util.List;
 public interface LocationRepository extends JpaRepository<Location, Long> {
     List<Location> findByLocataireId(Long locataireId);
     List<Location> findByVoitureId(Long voitureId);
+    List<Location> findByVoitureProprietaireId(Long proprietaireId);
     List<Location> findByStatut(String statut);
 }
 

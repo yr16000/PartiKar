@@ -1,6 +1,6 @@
 // src/pages/AnnonceDetails.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -11,6 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Calendar as CalIcon, MapPin } from "lucide-react";
 import { fr } from "date-fns/locale";
+import { useAuth } from "@/context/AuthContext";
 
 const FALLBACK =
     "https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=1600&auto=format&fit=crop";
@@ -32,6 +33,13 @@ function diffDaysInclusive(from, to) {
 
 export default function AnnonceDetails() {
     const { id } = useParams();
+    const navigate = useNavigate();
+    const { user, token } = useAuth();
+
+    // États pour la réservation
+    const [reserving, setReserving] = useState(false);
+    const [reservationError, setReservationError] = useState("");
+    const [reservationSuccess, setReservationSuccess] = useState(false);
 
     // ---- DATEPICKER (même logique que Hero) ----
     const today = useMemo(() => {
@@ -74,6 +82,61 @@ export default function AnnonceDetails() {
         const days = diffDaysInclusive(range.from, range.to ?? range.from);
         return price * days;
     })();
+
+    // Fonction pour gérer la réservation
+    const handleReservation = async () => {
+        // Vérifier si l'utilisateur est connecté (on vérifie le token)
+        if (!token) {
+            setReservationError("Vous devez être connecté pour réserver une voiture");
+            navigate("/login", { state: { from: `/annonce/${id}` } });
+            return;
+        }
+
+        // Réinitialiser les messages
+        setReservationError("");
+        setReservationSuccess(false);
+        setReserving(true);
+
+        try {
+            const payload = {
+                voitureId: Number(id),
+                dateDebut: toYMD(range.from),
+                dateFin: toYMD(range.to ?? range.from),
+                heureDebut: hour,
+                heureFin: hour,
+            };
+
+            const response = await fetch("http://localhost:8080/api/locations", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || "Erreur lors de la réservation");
+            }
+
+            const locationData = await response.json();
+
+            // Succès !
+            setReservationSuccess(true);
+
+            // Rediriger vers une page de confirmation après 2 secondes
+            setTimeout(() => {
+                navigate("/profile", { state: { tab: "reservations" } });
+            }, 2000);
+
+        } catch (error) {
+            console.error("Erreur réservation:", error);
+            setReservationError(error.message || "Une erreur est survenue lors de la réservation");
+        } finally {
+            setReserving(false);
+        }
+    };
 
     useEffect(() => {
         let alive = true;
@@ -369,8 +432,27 @@ export default function AnnonceDetails() {
                                     </div>
                                 </div>
 
+                                {/* Messages de feedback */}
+                                {reservationError && (
+                                    <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+                                        {reservationError}
+                                    </div>
+                                )}
+
+                                {reservationSuccess && (
+                                    <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
+                                        ✅ Réservation confirmée ! Redirection...
+                                    </div>
+                                )}
+
                                 {/* CTA */}
-                                <Button className="w-full h-12">Réserver</Button>
+                                <Button
+                                    className="w-full h-12"
+                                    onClick={handleReservation}
+                                    disabled={reserving || reservationSuccess}
+                                >
+                                    {reserving ? "Réservation en cours..." : reservationSuccess ? "✓ Réservé" : "Réserver"}
+                                </Button>
                             </div>
                         </div>
                     </aside>

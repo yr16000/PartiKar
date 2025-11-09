@@ -9,24 +9,22 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null); // L'utilisateur connecté
     const [token, setToken] = useState(localStorage.getItem('token')); // Le token JWT
+    const [loading, setLoading] = useState(false); // État de chargement
 
-    // Effet pour mettre à jour axios quand le token change
+    // Effet pour configurer axios avec le token
     useEffect(() => {
         if (token) {
             // On stocke le token pour les futures visites
             localStorage.setItem('token', token);
-
             // On configure axios pour envoyer le token à CHAQUE requête
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-            // On pourrait aussi charger les infos de l'utilisateur ici
-            // ex: axios.get('/api/users/me').then(res => setUser(res.data))
         } else {
             // Si pas de token, on supprime tout
             localStorage.removeItem('token');
             delete axios.defaults.headers.common['Authorization'];
+            setUser(null);
         }
-    }, [token]); // Ce code se relance à chaque fois que `token` change
+    }, [token]); // Se relance uniquement quand le token change
 
     // --- C'est ICI que le lien se fait ---
 
@@ -66,6 +64,7 @@ export function AuthProvider({ children }) {
     const value = {
         user,
         token,
+        loading,
         login,
         register,
         logout,
