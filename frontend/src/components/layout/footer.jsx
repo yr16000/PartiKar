@@ -24,7 +24,7 @@ export default function Footer() {
                         </p>
                         <div className="mt-4">
                             <Button asChild variant="brand">
-                                <a href="/register">Commencer</a>
+                                <a href="/login">Commencer</a>
                             </Button>
                         </div>
                     </div>
