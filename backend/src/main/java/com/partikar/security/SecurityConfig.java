@@ -87,6 +87,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/health", "/api/test").permitAll()
                         .requestMatchers("/api/cars/**").permitAll()
                         .requestMatchers("/api/geocode/**").permitAll()
+                        .requestMatchers("/api/annonces/**").permitAll()
+
                         // Protégé
                         .requestMatchers("/api/users/me").authenticated()
                         // Le reste, ajustez selon vos besoins

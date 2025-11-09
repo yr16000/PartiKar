@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Publish from "./pages/Publish";
 import Profile from "./pages/Profile";
+import AnnonceDetails from "./pages/AnnonceDetails";
 
 
 function ScrollManager() {
@@ -48,6 +49,8 @@ export default function App() {
 
                 {/* PAGE PROFIL UTILISATEUR */}
                 <Route path="/profile" element={<Profile />} />
+
+                <Route path="/annonces/:id" element={<AnnonceDetails />} />
 
 
             </Routes>

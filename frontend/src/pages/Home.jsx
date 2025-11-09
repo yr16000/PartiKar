@@ -4,6 +4,9 @@ import Footer from "../components/layout/footer";
 import Faq from "../components/layout/faq";
 import Hero from "../components/layout/hero";
 import { Link } from "react-router-dom";
+import CarListing from "../components/layout/CarListing";
+
+
 
 
 // shadcn/ui
@@ -27,6 +30,8 @@ export default function Home() {
         <main className="min-h-screen bg-background text-foreground">
             <Header />
             <Hero />
+            <CarListing />
+
 
 
             {/* COMMENT ÇA MARCHE */}
