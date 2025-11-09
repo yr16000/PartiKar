@@ -33,13 +33,16 @@ public class AnnonceService {
     private final VoitureRepository voitureRepository;
     private final DisponibiliteRepository disponibiliteRepository;
     private final UserRepository userRepository;
+    private final com.partikar.avis.AvisRepository avisRepository;
 
     public AnnonceService(VoitureRepository voitureRepository,
                          DisponibiliteRepository disponibiliteRepository,
-                         UserRepository userRepository) {
+                         UserRepository userRepository,
+                         com.partikar.avis.AvisRepository avisRepository) {
         this.voitureRepository = voitureRepository;
         this.disponibiliteRepository = disponibiliteRepository;
         this.userRepository = userRepository;
+        this.avisRepository = avisRepository;
     }
 
     /**
@@ -237,4 +240,311 @@ public class AnnonceService {
         voiture.setMajLe(LocalDateTime.now());
         voitureRepository.save(voiture);
     }
+
+    /**
+     * Recherche d'annonces avec géolocalisation et filtres avancés.
+     * Utilise la formule de Haversine pour calculer la distance entre deux points GPS.
+     *
+     * @param request DTO contenant les critères de recherche (tous optionnels)
+     * @return Liste des annonces correspondant aux critères, triées par distance si géolocalisation activée
+     */
+    @Transactional(readOnly = true)
+    public List<AnnonceResponse> rechercherAnnonces(com.partikar.annonces.dto.SearchAnnonceRequest request) {
+        logger.info("Recherche d'annonces avec critères: {}", request);
+
+        List<Voiture> voitures = voitureRepository.findAll();
+
+        return voitures.stream()
+            // Filtrer uniquement les annonces disponibles
+            .filter(v -> "disponible".equalsIgnoreCase(v.getStatut()))
+
+            // Filtre géographique (rayon autour de la ville sélectionnée)
+            .filter(v -> {
+                if (request.getLatitude() != null && request.getLongitude() != null) {
+                    if (v.getLatitude() == null || v.getLongitude() == null) {
+                        logger.debug("Voiture {} exclue: pas de coordonnées GPS", v.getId());
+                        return false;
+                    }
+                    double distance = calculerDistance(
+                        request.getLatitude(), request.getLongitude(),
+                        v.getLatitude().doubleValue(), v.getLongitude().doubleValue()
+                    );
+                    boolean dansRayon = distance <= request.getRayonKm();
+                    if (!dansRayon) {
+                        logger.debug("Voiture {} exclue: distance {}km > rayon {}km",
+                            v.getId(), String.format("%.1f", distance), request.getRayonKm());
+                    }
+                    return dansRayon;
+                }
+                return true; // Pas de filtre géographique
+            })
+
+            // Filtre marque (insensible à la casse)
+            .filter(v -> {
+                if (request.getMarque() == null || request.getMarque().trim().isEmpty()) {
+                    return true;
+                }
+                return v.getMarque() != null &&
+                       v.getMarque().toLowerCase().contains(request.getMarque().toLowerCase().trim());
+            })
+
+            // Filtre modèle (insensible à la casse)
+            .filter(v -> {
+                if (request.getModele() == null || request.getModele().trim().isEmpty()) {
+                    return true;
+                }
+                return v.getModele() != null &&
+                       v.getModele().toLowerCase().contains(request.getModele().toLowerCase().trim());
+            })
+
+            // Filtre type de carburant
+            .filter(v -> {
+                if (request.getTypeCarburant() == null || request.getTypeCarburant().trim().isEmpty()) {
+                    return true;
+                }
+                return v.getTypeCarburant() != null &&
+                       v.getTypeCarburant().equalsIgnoreCase(request.getTypeCarburant());
+            })
+
+            // Filtre boîte de vitesse
+            .filter(v -> {
+                if (request.getBoiteVitesse() == null || request.getBoiteVitesse().trim().isEmpty()) {
+                    return true;
+                }
+                return v.getBoiteVitesse() != null &&
+                       v.getBoiteVitesse().name().equalsIgnoreCase(request.getBoiteVitesse());
+            })
+
+            // Filtre nombre de places
+            .filter(v -> {
+                if (request.getNbPlaces() == null) {
+                    return true;
+                }
+                return v.getNbPlaces() != null && v.getNbPlaces().equals(request.getNbPlaces());
+            })
+
+            // Filtre prix minimum
+            .filter(v -> {
+                if (request.getPrixMin() == null) {
+                    return true;
+                }
+                return v.getPrixParJour() != null &&
+                       v.getPrixParJour().doubleValue() >= request.getPrixMin();
+            })
+
+            // Filtre prix maximum
+            .filter(v -> {
+                if (request.getPrixMax() == null) {
+                    return true;
+                }
+                return v.getPrixParJour() != null &&
+                       v.getPrixParJour().doubleValue() <= request.getPrixMax();
+            })
+
+            // Filtre année minimum
+            .filter(v -> {
+                if (request.getAnneeMin() == null) {
+                    return true;
+                }
+                return v.getAnnee() != null && v.getAnnee() >= request.getAnneeMin();
+            })
+
+            // Filtre année maximum
+            .filter(v -> {
+                if (request.getAnneeMax() == null) {
+                    return true;
+                }
+                return v.getAnnee() != null && v.getAnnee() <= request.getAnneeMax();
+            })
+
+            // Filtre climatisation
+            .filter(v -> {
+                if (request.getClimatisation() == null) {
+                    return true;
+                }
+                return v.getClimatisation() != null &&
+                       v.getClimatisation().equals(request.getClimatisation());
+            })
+
+            // Filtre disponibilité (si dates fournies)
+            .filter(v -> {
+                if (request.getDateDebut() != null && request.getDateFin() != null) {
+                    boolean disponible = verifierDisponibilite(v.getId(), request.getDateDebut(), request.getDateFin());
+                    if (!disponible) {
+                        logger.debug("Voiture {} exclue: non disponible pour la période demandée", v.getId());
+                    }
+                    return disponible;
+                }
+                return true; // Pas de filtre de dates
+            })
+
+            // Transformer en AnnonceResponse et ajouter la distance + nb avis
+            .map(voiture -> {
+                int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
+                AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+
+                // Calculer et ajouter la distance si géolocalisation activée
+                if (request.getLatitude() != null && request.getLongitude() != null
+                    && voiture.getLatitude() != null && voiture.getLongitude() != null) {
+                    double distance = calculerDistance(
+                        request.getLatitude(), request.getLongitude(),
+                        voiture.getLatitude().doubleValue(), voiture.getLongitude().doubleValue()
+                    );
+                    response.setDistanceKm(distance);
+                }
+
+                // Ajouter le nombre d'avis pour cette voiture
+                long nbAvis = avisRepository.countByCibleId(voiture.getId());
+                response.setNbAvis((int) nbAvis);
+
+                return response;
+            })
+
+            // Appliquer le tri selon l'option choisie
+            .sorted(getComparator(request))
+
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Retourne le comparateur approprié selon l'option de tri demandée.
+     * Si aucune option n'est spécifiée, tri par distance si géolocalisation activée,
+     * sinon par date de publication décroissante (plus récent en premier).
+     *
+     * @param request Requête de recherche contenant l'option de tri
+     * @return Comparateur pour trier les annonces
+     */
+    private java.util.Comparator<AnnonceResponse> getComparator(com.partikar.annonces.dto.SearchAnnonceRequest request) {
+        com.partikar.annonces.dto.TriOption triOption = request.getTriOption();
+
+        // Si pas d'option de tri spécifiée, utiliser le tri par défaut
+        if (triOption == null) {
+            // Si géolocalisation activée, trier par distance
+            if (request.getLatitude() != null && request.getLongitude() != null) {
+                triOption = com.partikar.annonces.dto.TriOption.DISTANCE_ASC;
+            } else {
+                // Sinon, trier par date de publication décroissante (plus récent en premier)
+                triOption = com.partikar.annonces.dto.TriOption.DATE_PUBLICATION_DESC;
+            }
+        }
+
+        switch (triOption) {
+            case DISTANCE_ASC:
+                return (a, b) -> {
+                    if (a.getDistanceKm() != null && b.getDistanceKm() != null) {
+                        return Double.compare(a.getDistanceKm(), b.getDistanceKm());
+                    }
+                    return 0;
+                };
+
+            case PRIX_ASC:
+                return (a, b) -> {
+                    if (a.getPrixParJour() != null && b.getPrixParJour() != null) {
+                        return a.getPrixParJour().compareTo(b.getPrixParJour());
+                    }
+                    return 0;
+                };
+
+            case PRIX_DESC:
+                return (a, b) -> {
+                    if (a.getPrixParJour() != null && b.getPrixParJour() != null) {
+                        return b.getPrixParJour().compareTo(a.getPrixParJour());
+                    }
+                    return 0;
+                };
+
+            case DATE_PUBLICATION_ASC:
+                return (a, b) -> {
+                    if (a.getCreeLe() != null && b.getCreeLe() != null) {
+                        return a.getCreeLe().compareTo(b.getCreeLe());
+                    }
+                    return 0;
+                };
+
+            case DATE_PUBLICATION_DESC:
+                return (a, b) -> {
+                    if (a.getCreeLe() != null && b.getCreeLe() != null) {
+                        return b.getCreeLe().compareTo(a.getCreeLe());
+                    }
+                    return 0;
+                };
+
+            case NB_AVIS_ASC:
+                return (a, b) -> {
+                    if (a.getNbAvis() != null && b.getNbAvis() != null) {
+                        return Integer.compare(a.getNbAvis(), b.getNbAvis());
+                    }
+                    return 0;
+                };
+
+            case NB_AVIS_DESC:
+                return (a, b) -> {
+                    if (a.getNbAvis() != null && b.getNbAvis() != null) {
+                        return Integer.compare(b.getNbAvis(), a.getNbAvis());
+                    }
+                    return 0;
+                };
+
+            default:
+                return (a, b) -> 0; // Pas de tri
+        }
+    }
+
+    /**
+     * Calcule la distance entre deux points GPS en utilisant la formule de Haversine.
+     * Cette formule permet de calculer la distance orthodromique (plus courte distance)
+     * entre deux points sur une sphère à partir de leurs coordonnées GPS.
+     *
+     * @param lat1 Latitude du point 1 (en degrés)
+     * @param lon1 Longitude du point 1 (en degrés)
+     * @param lat2 Latitude du point 2 (en degrés)
+     * @param lon2 Longitude du point 2 (en degrés)
+     * @return Distance en kilomètres
+     */
+    private double calculerDistance(double lat1, double lon1, double lat2, double lon2) {
+        final int RAYON_TERRE_KM = 6371; // Rayon moyen de la Terre en kilomètres
+
+        // Conversion des degrés en radians
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+
+        // Formule de Haversine
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return RAYON_TERRE_KM * c;
+    }
+
+    /**
+     * Vérifie si une voiture est disponible pour une période donnée.
+     * Tous les jours de la période doivent avoir le statut DISPONIBLE.
+     *
+     * @param voitureId ID de la voiture
+     * @param dateDebut Date de début de la période
+     * @param dateFin Date de fin de la période
+     * @return true si la voiture est disponible pour toute la période, false sinon
+     */
+    private boolean verifierDisponibilite(Long voitureId, LocalDate dateDebut, LocalDate dateFin) {
+        List<Disponibilite> disponibilites = disponibiliteRepository.findByVoitureId(voitureId);
+
+        // Vérifier chaque jour de la période
+        LocalDate current = dateDebut;
+        while (!current.isAfter(dateFin)) {
+            final LocalDate checkDate = current;
+            boolean jourDisponible = disponibilites.stream()
+                .anyMatch(d -> d.getJour().equals(checkDate)
+                    && d.getStatut() == Disponibilite.Statut.DISPONIBLE);
+
+            if (!jourDisponible) {
+                return false; // Au moins un jour n'est pas disponible
+            }
+            current = current.plusDays(1);
+        }
+        return true; // Tous les jours sont disponibles
+    }
 }
+
+
