@@ -11,6 +11,11 @@ services:
     volumes:
       - db-postgres-data:/var/lib/postgresql/data
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U Partikar -d partikardb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build: ./backend
@@ -20,12 +25,19 @@ services:
     volumes:
       - ./backend:/app
       - /app/target
-    depends_on:
-      - db-postgres
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-postgres:5432/partikardb
       SPRING_DATASOURCE_USERNAME: Partikar
       SPRING_DATASOURCE_PASSWORD: Partikar1234
+    depends_on:
+      db-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/annonces >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
 
   frontend:
     build:
@@ -39,21 +51,18 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - VITE_BACKEND_URL=http://backend:8080
-    command: [ "npm","run","dev","--","--host" ]
+    command: ["npm","run","dev","--","--host"]
     depends_on:
-      - backend
-
+      backend:
+        condition: service_healthy
 
   maildev:
-   image: maildev/maildev
-   container_name: maildev
-   ports:
-   - "1080:1080"
-   - "1025:1025"
-   restart: always
-
-
-
+    image: maildev/maildev
+    container_name: maildev
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+    restart: always
 
 volumes:
   db-postgres-data:

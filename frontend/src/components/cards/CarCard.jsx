@@ -1,20 +1,14 @@
 import React from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Card, CardTitle, CardContent } from "../ui/card";
 
 const FALLBACK =
     "https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=1600&auto=format&fit=crop";
 
-/**
- * Props attendues (côté CarListing normalisé depuis AnnonceResponse):
- * {
- *   id, marque, modele, annee, imageUrl,
- *   moyenneAvis?, nbAvis?, localisation?
- * }
- */
 export default function CarCard({ car }) {
     const title = `${car?.marque ?? ""} ${car?.modele ?? ""}`.trim() || "Voiture";
     const subtitle = car?.annee ? String(car.annee) : "";
     const imageUrl = car?.imageUrl || FALLBACK;
+    const price = car?.prixParJour ? `${car.prixParJour}€ / jour` : "";
 
     const rating = car?.moyenneAvis;
     const reviewCount = car?.nbAvis;
@@ -27,9 +21,9 @@ export default function CarCard({ car }) {
         reviewCount > 0;
 
     return (
-        <Card className="overflow-hidden p-0 hover:shadow-md transition">
-            {/* IMAGE */}
-            <div className="aspect-[16/9] w-full overflow-hidden bg-muted">
+        <Card className="overflow-hidden hover:shadow-lg transition rounded-2xl p-0 cursor-pointer">
+            {/* IMAGE (plus grande) */}
+            <div className="aspect-[4/3] w-full overflow-hidden bg-muted rounded-b-none">
                 <img
                     src={imageUrl}
                     alt={title}
@@ -39,27 +33,33 @@ export default function CarCard({ car }) {
                 />
             </div>
 
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base sm:text-lg font-semibold truncate">
-                    {title}
+            <CardContent className="pt-3 pb-4 space-y-2">
+                {/* TITRE */}
+                <CardTitle className="text-lg font-semibold leading-tight truncate">
+                    {title} {subtitle && ` ${subtitle}`}
                 </CardTitle>
-                {subtitle && (
-                    <div className="text-sm text-muted-foreground">{subtitle}</div>
-                )}
-            </CardHeader>
 
-            <CardContent className="pb-5 space-y-1">
-                {/* Ligne AVIS / NOUVELLE ANNONCE — au-dessus de la localisation */}
+                {/* ⚡ NOUVELLE ANNONCE ou AVIS — maintenant juste en dessous du titre */}
                 {hasRating && hasReviews ? (
-                    <p className="text-sm">⭐ {rating.toFixed(1)} <span className="text-muted-foreground">({reviewCount} avis)</span></p>
+                    <p className="text-sm font-medium">
+                        ⭐ {rating.toFixed(1)}{" "}
+                        <span className="text-muted-foreground">({reviewCount} voyages)</span>
+                    </p>
                 ) : (
-                    <p className="text-sm">Nouvelle annonce</p>
+                    <p className="text-sm font-medium text-indigo-600">Nouvelle annonce</p>
                 )}
 
                 {/* Localisation */}
                 {car?.localisation && (
                     <p className="text-sm text-muted-foreground truncate">
                         📍 {car.localisation}
+                    </p>
+                )}
+
+                {/* Prix */}
+                {price && (
+                    <p className="text-base font-semibold mt-1">
+                        {price}
                     </p>
                 )}
             </CardContent>
