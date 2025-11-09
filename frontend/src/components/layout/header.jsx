@@ -95,7 +95,7 @@ export default function Header() {
                 {/* Actions droite (desktop + mobile) */}
                 <div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0">
                     <Button asChild variant="outline" className="h-10 px-5 hidden md:flex">
-                        <a href="/publish" className="flex items-center gap-2">
+                        <a href={isAuth ? "/publish" : "/login"} className="flex items-center gap-2">
                             <PlusCircle className="h-4 w-4" />
                             <span>Publier une voiture</span>
                         </a>
@@ -158,6 +158,9 @@ function UserDropdown({ initials, avatarUrl, fullName, onLogout }) {
 
 /* Menu latéral mobile existant */
 function MobileMenu() {
+    // Lire l'état d'authentification depuis localStorage
+    const isAuth = !!localStorage.getItem("token");
+
     return (
         <Sheet>
             <SheetTrigger asChild>
@@ -191,7 +194,7 @@ function MobileMenu() {
                     <div className="mt-4 grid gap-2">
                         <SheetClose asChild>
                             <Button asChild variant="outline" className="h-11">
-                                <Link to="/publish" className="flex items-center justify-center gap-2">
+                                <Link to={isAuth ? "/publish" : "/login"} className="flex items-center justify-center gap-2">
                                     <PlusCircle className="h-5 w-5" />
                                     <span>Publier une voiture</span>
                                 </Link>
