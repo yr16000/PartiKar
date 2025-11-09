@@ -29,7 +29,7 @@ public class AnnonceController {
      */
     @PostMapping
     public ResponseEntity<?> creerAnnonce(
-            @RequestParam Long proprietaireId,
+            @RequestParam(required = false) Long proprietaireId,
             @RequestBody CreerAnnonceRequest request) {
         try {
             AnnonceResponse response = annonceService.creerAnnonce(proprietaireId, request);
@@ -106,4 +106,3 @@ public class AnnonceController {
         }
     }
 }
-

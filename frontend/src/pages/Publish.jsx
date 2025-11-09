@@ -33,10 +33,15 @@ import {
 // ⬇️ Auto-complétion comme dans l’exemple
 import PlaceAutocomplete from "@/components/ui/PlaceAutocomplete";
 
+// Ajout : récupérer le token depuis le contexte
+import { useAuth } from "../context/AuthContext.jsx";
+
 const CARBURANTS = ["ELECTRIQUE", "DIESEL", "ESSENCE", "HYBRIDE"];
 const BOITES = ["MANUELLE", "AUTOMATIQUE"];
 
 export default function Publish() {
+    const { token } = useAuth();
+
     const [form, setForm] = useState({
         marque: "",
         modele: "",
@@ -103,6 +108,8 @@ export default function Publish() {
 
     // --- Popover année ---
     const [openYear, setOpenYear] = useState(false);
+    const [openCarburant, setOpenCarburant] = useState(false);
+    const [openBoite, setOpenBoite] = useState(false);
     const currentYear = new Date().getFullYear();
     const annees = useMemo(
         () => Array.from({ length: currentYear - 1899 }, (_, i) => (currentYear - i).toString()),
@@ -158,39 +165,73 @@ export default function Publish() {
         if (error) return setErreur(error);
 
         const payload = {
-            voiture: {
-                marque: form.marque,
-                modele: form.modele,
-                immatriculation: form.immatriculation,
-                annee: Number(form.annee),
-                couleur: form.couleur || null,
-                typeCarburant: form.typeCarburant,
-                nbPlaces: Number(form.nbPlaces),
-                description: form.description || null,
-                imageUrl: form.imageUrl,
-                prixParJour: Number(form.prixJour),
-                boiteVitesse: form.boiteVitesse,
-                climatisation: !!form.climatisation,
-                localisation: form.ville, // on continue d'envoyer uniquement la string côté back
-                // latitude/longitude conservés localement (non envoyés, comme avant)
-            },
-            disponibilite: {
-                dateDebut: dateRange.from.toISOString().slice(0, 10),
-                dateFin: dateRange.to.toISOString().slice(0, 10),
-            },
+            // Envoyer les champs directement comme le DTO backend
+            marque: form.marque,
+            modele: form.modele,
+            immatriculation: form.immatriculation,
+            annee: form.annee ? Number(form.annee) : null,
+            couleur: form.couleur || null,
+            typeCarburant: form.typeCarburant,
+            nbPlaces: form.nbPlaces ? Number(form.nbPlaces) : null,
+            description: form.description || null,
+            imageUrl: form.imageUrl,
+            prixParJour: form.prixJour ? Number(form.prixJour) : null,
+            boiteVitesse: form.boiteVitesse,
+            climatisation: !!form.climatisation,
+            localisation: form.ville,
+            latitude: form.latitude,
+            longitude: form.longitude,
+            // On envoie la plage de dates : backend créera une Disponibilite par jour
+            dateDebut: dateRange.from ? dateRange.from.toISOString().slice(0, 10) : null,
+            dateFin: dateRange.to ? dateRange.to.toISOString().slice(0, 10) : null,
         };
 
         try {
             setLoading(true);
+            const headers = { "Content-Type": "application/json" };
+            if (token) {
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+
+            // Log utile pour debug
+            console.debug('Création annonce - payload:', payload);
+
             const res = await fetch("/api/annonces", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers,
                 body: JSON.stringify(payload),
             });
 
+            if (res.status === 401) {
+                const msg = "401 - Vous devez être connecté(e) pour publier une annonce.";
+                console.error(msg);
+                setErreur(msg);
+                return;
+            }
+            if (res.status === 403) {
+                const msg = "403 - Accès refusé : vous n'êtes pas autorisé(e) à effectuer cette action.";
+                console.error(msg);
+                setErreur(msg);
+                return;
+            }
+
             if (!res.ok) {
-                const txt = await res.text();
-                throw new Error(txt || "Erreur serveur");
+                console.error('Création annonce - réponse:', res);
+                let errText = null;
+                try {
+                    const data = await res.json();
+                    errText = data?.message || data?.error || JSON.stringify(data);
+                } catch (jsonErr) {
+                    try {
+                        errText = await res.text();
+                    } catch (tErr) {
+                        errText = null;
+                    }
+                }
+                const fullMsg = `${res.status} ${res.statusText} - ${errText || 'Erreur serveur'}`;
+                console.error('Création annonce - body erreur:', errText);
+                setErreur(fullMsg);
+                return;
             }
 
             setSuccess(true);
@@ -302,7 +343,7 @@ export default function Publish() {
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div>
                                     <Label className="mb-2 block text-sm">Type carburant *</Label>
-                                    <Popover>
+                                    <Popover open={openCarburant} onOpenChange={setOpenCarburant}>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" role="combobox" className="w-full justify-between h-11">
                                                 {form.typeCarburant || <span className="text-muted-foreground">Sélectionner</span>}
@@ -314,7 +355,7 @@ export default function Publish() {
                                                     <CommandEmpty>Aucun résultat</CommandEmpty>
                                                     <CommandGroup>
                                                         {CARBURANTS.map((c) => (
-                                                            <CommandItem key={c} onSelect={() => setForm((p) => ({ ...p, typeCarburant: c }))}>
+                                                            <CommandItem key={c} onSelect={() => { setForm((p) => ({ ...p, typeCarburant: c })); setOpenCarburant(false); }}>
                                                                 {c}
                                                             </CommandItem>
                                                         ))}
@@ -327,7 +368,7 @@ export default function Publish() {
 
                                 <div>
                                     <Label className="mb-2 block text-sm">Boîte de vitesses *</Label>
-                                    <Popover>
+                                    <Popover open={openBoite} onOpenChange={setOpenBoite}>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" role="combobox" className="w-full justify-between h-11">
                                                 {form.boiteVitesse || <span className="text-muted-foreground">Sélectionner</span>}
@@ -339,7 +380,7 @@ export default function Publish() {
                                                     <CommandEmpty>Aucun résultat</CommandEmpty>
                                                     <CommandGroup>
                                                         {BOITES.map((b) => (
-                                                            <CommandItem key={b} onSelect={() => setForm((p) => ({ ...p, boiteVitesse: b }))}>
+                                                            <CommandItem key={b} onSelect={() => { setForm((p) => ({ ...p, boiteVitesse: b })); setOpenBoite(false); }}>
                                                                 {b}
                                                             </CommandItem>
                                                         ))}

@@ -1,5 +1,6 @@
 package com.partikar.annonces.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -32,8 +33,15 @@ public class CreerAnnonceRequest {
     private BigDecimal latitude;
     private BigDecimal longitude;
 
-    // Disponibilités initiales
+    // Disponibilités initiales (liste de jours optionnelle)
     private List<DisponibiliteDTO> disponibilites;
+
+    // Nouveaux champs : plage de dates (dateDebut/dateFin) envoyés par le frontend
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate dateDebut;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate dateFin;
 
     // Getters et Setters
     public String getMarque() { return marque; }
@@ -84,6 +92,12 @@ public class CreerAnnonceRequest {
     public List<DisponibiliteDTO> getDisponibilites() { return disponibilites; }
     public void setDisponibilites(List<DisponibiliteDTO> disponibilites) { this.disponibilites = disponibilites; }
 
+    public LocalDate getDateDebut() { return dateDebut; }
+    public void setDateDebut(LocalDate dateDebut) { this.dateDebut = dateDebut; }
+
+    public LocalDate getDateFin() { return dateFin; }
+    public void setDateFin(LocalDate dateFin) { this.dateFin = dateFin; }
+
     /**
      * DTO interne pour représenter une disponibilité
      */
@@ -98,4 +112,3 @@ public class CreerAnnonceRequest {
         public void setPrixSpecifique(BigDecimal prixSpecifique) { this.prixSpecifique = prixSpecifique; }
     }
 }
-

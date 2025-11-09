@@ -40,7 +40,8 @@ public class Voiture {
     @Column(nullable = false, unique = true) // L'immatriculation doit être unique
     private String immatriculation;
 
-    @Column(nullable = false)
+    // Correspond à la colonne SQL `type_carburant` (nom attendu par la base)
+    @Column(name = "carburant", nullable = false)
     private String typeCarburant; // Ex: ESSENCE, DIESEL, ELECTRIQUE, HYBRIDE
 
     @Column(nullable = false)
@@ -50,7 +51,8 @@ public class Voiture {
     @Column(columnDefinition = "TEXT") // Spécifie le type SQL pour être sûr
     private String description;
 
-    @Column(nullable = true)
+    // Augmentation de la taille maximale pour éviter value too long for type character varying(255)
+    @Column(nullable = true, length = 1000)
     private String imageUrl;
 
     @Column(nullable = false)
@@ -69,7 +71,7 @@ public class Voiture {
     private Boolean climatisation; // true ou false
 
     //  Champs Géolocalisation
-    @Column(nullable = true)
+    @Column(nullable = true, length = 10000)
     private String localisation; // L'adresse complète (ex: "10 Rue de Rivoli, Paris")
 
     @Column(nullable = true)
