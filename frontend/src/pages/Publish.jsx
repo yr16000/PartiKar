@@ -139,7 +139,7 @@ export default function Publish() {
         if (isNaN(Number(form.prixJour)) || Number(form.prixJour) <= 0) {
             return "Le prix par jour doit être un nombre positif.";
         }
-        // ⬇️ borne 1–9 pour le nombre de places
+        //borne 1–9 pour le nombre de places
         const places = Number(form.nbPlaces);
         if (!Number.isFinite(places) || places < 1 || places > 9) {
             return "Le nombre de places doit être un entier entre 1 et 9.";
@@ -542,7 +542,7 @@ export default function Publish() {
 
                             {/* Messages */}
                             {erreur && <p className="text-destructive text-sm">{erreur}</p>}
-                            {success && <p className="text-green-600 text-sm">✅ Annonce publiée avec succès</p>}
+                            {success && <p className="text-green-600 text-sm">Annonce publiée avec succès</p>}
 
                             {/* Bouton */}
                             <Button type="submit" variant="brand" className="w-full h-11" disabled={loading}>
