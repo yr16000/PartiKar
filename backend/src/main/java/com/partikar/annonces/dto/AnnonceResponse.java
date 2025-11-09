@@ -33,6 +33,8 @@ public class AnnonceResponse {
     private String proprietairePrenom;
     private LocalDateTime creeLe;
     private Integer nbJoursDisponibles;
+    private Double distanceKm; // Distance par rapport au point de recherche (en km)
+    private Integer nbAvis; // Nombre d'avis pour cette voiture
 
     /**
      * Constructeur à partir d'une entité Voiture
@@ -130,5 +132,11 @@ public class AnnonceResponse {
 
     public Integer getNbJoursDisponibles() { return nbJoursDisponibles; }
     public void setNbJoursDisponibles(Integer nbJoursDisponibles) { this.nbJoursDisponibles = nbJoursDisponibles; }
+
+    public Double getDistanceKm() { return distanceKm; }
+    public void setDistanceKm(Double distanceKm) { this.distanceKm = distanceKm; }
+
+    public Integer getNbAvis() { return nbAvis; }
+    public void setNbAvis(Integer nbAvis) { this.nbAvis = nbAvis; }
 }
 

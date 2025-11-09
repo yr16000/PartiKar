@@ -76,6 +76,49 @@ public class AnnonceController {
     }
 
     /**
+     * Recherche d'annonces avec géolocalisation et filtres avancés.
+     * POST /api/annonces/search
+     *
+     * Les coordonnées latitude/longitude sont calculées côté frontend à partir
+     * de la localisation sélectionnée via l'API de géocodage.
+     *
+     * Exemple de payload JSON:
+     * {
+     *   "latitude": 48.8566,
+     *   "longitude": 2.3522,
+     *   "rayonKm": 10,
+     *   "dateDebut": "2025-01-15",
+     *   "dateFin": "2025-01-20",
+     *   "marque": "Renault",
+     *   "modele": "Clio",
+     *   "typeCarburant": "Essence",
+     *   "boiteVitesse": "Manuelle",
+     *   "prixMin": 20,
+     *   "prixMax": 100,
+     *   "anneeMin": 2015,
+     *   "anneeMax": 2024,
+     *   "nbPlaces": 5,
+     *   "climatisation": true,
+     *   "triOption": "PRIX_ASC"
+     * }
+     *
+     * Options de tri disponibles :
+     * - DISTANCE_ASC : Distance croissante (par défaut si géolocalisation)
+     * - PRIX_ASC : Prix croissant
+     * - PRIX_DESC : Prix décroissant
+     * - DATE_PUBLICATION_ASC : Date de publication ancienne → récente
+     * - DATE_PUBLICATION_DESC : Date de publication récente → ancienne (par défaut)
+     * - NB_AVIS_ASC : Nombre d'avis croissant
+     * - NB_AVIS_DESC : Nombre d'avis décroissant
+     */
+    @PostMapping("/search")
+    public ResponseEntity<List<AnnonceResponse>> rechercherAnnonces(
+            @RequestBody com.partikar.annonces.dto.SearchAnnonceRequest request) {
+        List<AnnonceResponse> annonces = annonceService.rechercherAnnonces(request);
+        return ResponseEntity.ok(annonces);
+    }
+
+    /**
      * Supprime une annonce (soft delete).
      * DELETE /api/annonces/1?proprietaireId=1
      */
