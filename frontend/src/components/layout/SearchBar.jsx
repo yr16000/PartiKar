@@ -1,19 +1,16 @@
+// src/components/layout/SearchBar.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import PlaceAutocomplete from "@/components/ui/PlaceAutocomplete";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import {
-    Select,
-    SelectTrigger,
-    SelectContent,
-    SelectItem,
-    SelectValue,
+    Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalIcon } from "lucide-react";
 import { fr } from "date-fns/locale";
 
-export default function SearchBar({ onSearch }) {
+export default function SearchBar({ onSearch, variant = "plain" }) {
     const today = useMemo(() => {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
@@ -50,27 +47,22 @@ export default function SearchBar({ onSearch }) {
         onSearch ? onSearch(payload) : console.log(payload);
     }
 
+    // Skins
+    const base =
+        "relative overflow-visible mx-auto w-full max-w-[1100px] grid grid-cols-1 gap-3 sm:gap-4 md:gap-5 rounded-2xl bg-white p-4 sm:p-5 sm:[grid-template-columns:1.8fr_2.4fr_1fr_minmax(160px,auto)] items-stretch sm:items-end";
+    const skin =
+        variant === "hero"
+            ? "border border-transparent shadow-none" // Laisse le wrapper dégradé du Hero gérer le style
+            : "border border-gray-200 shadow-xl";     // Style neutre ailleurs (Search page)
+
     return (
-        <form
-            onSubmit={handleSubmit}
-            className="
-        relative overflow-visible mx-auto
-        w-full max-w-[1100px]
-        grid grid-cols-1 gap-3 sm:gap-4 md:gap-5
-        rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-xl
-        sm:[grid-template-columns:1.8fr_2.4fr_1fr_minmax(160px,auto)]
-        items-stretch sm:items-end
-      "
-        >
+        <form onSubmit={handleSubmit} className={`${base} ${skin}`}>
             {/* Lieu */}
             <div className="flex flex-col text-left min-w-0">
                 <span className="text-sm text-gray-600 mb-1 leading-none">Lieu</span>
                 <PlaceAutocomplete
                     value={city}
-                    onChange={(v) => {
-                        setCity(v);
-                        setCityCoords(null);
-                    }}
+                    onChange={(v) => { setCity(v); setCityCoords(null); }}
                     onSelect={(item) => {
                         setCity(item.label || "");
                         setCityCoords({ latitude: item.latitude, longitude: item.longitude });
@@ -87,9 +79,9 @@ export default function SearchBar({ onSearch }) {
                         <button
                             type="button"
                             className="h-12 w-full rounded-lg border border-gray-300 px-4 text-base leading-none text-left
-                flex items-center justify-between gap-3 bg-white shadow-sm
-                hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                min-w-0 overflow-hidden"
+                         flex items-center justify-between gap-3 bg-white shadow-sm
+                         hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                         min-w-0 overflow-hidden"
                         >
                             <span className="truncate">{formatRangeWithHour(range, hour)}</span>
                             <span className="inline-flex w-7 h-7 items-center justify-center rounded bg-gray-100 shrink-0">
@@ -149,14 +141,13 @@ export default function SearchBar({ onSearch }) {
                 <Select value={hour} onValueChange={setHour}>
                     <SelectTrigger
                         className="!h-12 w-full !text-base border border-gray-300 rounded-lg shadow-sm
-              bg-white flex items-center justify-between box-border
-              !px-4 !py-0 leading-none pr-10
-              focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-              [&>*]:leading-none [&>*]:my-0"
+                       bg-white flex items-center justify-between box-border
+                       !px-4 !py-0 leading-none pr-10
+                       focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                       [&>*]:leading-none [&>*]:my-0"
                     >
                         <SelectValue placeholder="10:00" />
                     </SelectTrigger>
-
                     <SelectContent
                         position="popper"
                         side="bottom"
@@ -176,11 +167,7 @@ export default function SearchBar({ onSearch }) {
 
             {/* CTA */}
             <div className="flex items-stretch sm:items-end">
-                <Button
-                    type="submit"
-                    variant="brand"
-                    className="h-12 w-full sm:w-auto md:min-w-[200px]"
-                >
+                <Button type="submit" variant="brand" className="h-12 w-full sm:w-auto md:min-w-[200px]">
                     Rechercher
                 </Button>
             </div>

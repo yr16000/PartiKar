@@ -67,21 +67,11 @@ function PrixChip({ value, onChange }) {
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <Label className="text-xs">Min (€)</Label>
-                                <Input
-                                    type="number"
-                                    inputMode="numeric"
-                                    value={min}
-                                    onChange={(e)=>setMin(e.target.value)}
-                                />
+                                <Input type="number" inputMode="numeric" value={min} onChange={(e)=>setMin(e.target.value)} />
                             </div>
                             <div>
                                 <Label className="text-xs">Max (€)</Label>
-                                <Input
-                                    type="number"
-                                    inputMode="numeric"
-                                    value={max}
-                                    onChange={(e)=>setMax(e.target.value)}
-                                />
+                                <Input type="number" inputMode="numeric" value={max} onChange={(e)=>setMax(e.target.value)} />
                             </div>
                         </div>
                         <div className="flex items-center justify-between">
@@ -241,13 +231,15 @@ function AnneesChip({ value, onChange }) {
                             <Button variant="outline" size="sm" onClick={()=>{ setMin(""); setMax(""); onChange?.({min:"", max:""}); }}>
                                 Réinitialiser
                             </Button>
-                            <Button variant="brand" size="sm" onClick={()=>{
-                                // sécurité : clamp à l’application
-                                const nMin = min === "" ? "" : String(Math.max(1900, Math.min(currentYear, parseInt(min, 10) || 1900)));
-                                const nMax = max === "" ? "" : String(Math.max(1900, Math.min(currentYear, parseInt(max, 10) || currentYear)));
-                                onChange?.({ min: nMin, max: nMax });
-                                setOpen(false);
-                            }}>
+                            <Button
+                                variant="brand" size="sm"
+                                onClick={()=>{
+                                    const nMin = min === "" ? "" : String(Math.max(1900, Math.min(currentYear, parseInt(min, 10) || 1900)));
+                                    const nMax = max === "" ? "" : String(Math.max(1900, Math.min(currentYear, parseInt(max, 10) || currentYear)));
+                                    onChange?.({ min: nMin, max: nMax });
+                                    setOpen(false);
+                                }}
+                            >
                                 Afficher
                             </Button>
                         </div>
@@ -360,10 +352,7 @@ function TriChip({ value, onChange }) {
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <button className="focus:outline-none">
-                    <Chip
-                        active={isActive}
-                        className="border-primary text-primary data-[active=true]:!bg-primary data-[active=true]:!text-white"
-                    >
+                    <Chip active={isActive} className="border-primary text-primary">
             <span className="inline-flex items-center gap-2">
               <ArrowUpDown className="h-4 w-4" />
               Trier
@@ -420,50 +409,39 @@ export default function Search() {
         <main className="min-h-screen bg-background text-foreground">
             <Header />
 
-            {/* Petit texte séparateur */}
-            <div className="container mx-auto px-4 md:px-6 mt-6">
-                <p className="text-sm text-muted-foreground text-center">
-                    Trouve la voiture idéale près de chez toi. Utilise la barre ci-dessous pour définir lieu, dates et heure.
-                </p>
+            {/* SearchBar — sans dégradé ni bloc coloré : on force la transparence du form enfant */}
+            <div className="mt-0 [&>form]:bg-transparent [&>form]:border-0 [&>form]:shadow-none">
+                {/* On peut passer variant='hero' ou 'plain' — les utilitaires ci-dessus suppriment tout */}
+                <SearchBar variant="plain" />
             </div>
 
-            {/* SearchBar */}
-            <div className="mt-3">
-                <SearchBar />
-            </div>
-
-            {/* Séparateur + marge pour détacher la barre fine */}
-            <div className="container mx-auto px-4 md:px-6 mt-8">
+            {/* Separator (proche du SearchBar) */}
+            <div className="container mx-auto px-4 md:px-6 mt-0">
                 <div className="h-px bg-border" />
             </div>
 
-            {/* BLOC FIN: barre de filtres horizontale avec popovers */}
-            <section className="container mx-auto px-4 md:px-6 mt-6">
-                <div
-                    className="
-            w-full overflow-x-auto
-            rounded-xl border border-border bg-card/60 shadow-sm
-            backdrop-blur supports-[backdrop-filter]:bg-card/40
-            px-2 sm:px-3 py-2
-            [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
-          "
-                >
-                    <div className="flex items-center gap-2">
-                        <PrixChip value={filters.prix} onChange={(v)=>setFilters((s)=>({ ...s, prix: v }))} />
-                        <MarqueChip value={filters.marque} onChange={(v)=>setFilters((s)=>({ ...s, marque: v, modele: "" }))} />
-                        <ModeleChip marque={filters.marque} value={filters.modele} onChange={(v)=>setFilters((s)=>({ ...s, modele: v }))} />
-                        <AnneesChip value={filters.annees} onChange={(v)=>setFilters((s)=>({ ...s, annees: v }))} />
-                        <TransmissionChip value={filters.boites} onChange={(v)=>setFilters((s)=>({ ...s, boites: v }))} />
-                        <CarburantChip value={filters.carburants} onChange={(v)=>setFilters((s)=>({ ...s, carburants: v }))} />
-                        <PlacesChip value={filters.places} onChange={(v)=>setFilters((s)=>({ ...s, places: v }))} />
-                        <TriChip value={filters.tri} onChange={(v)=>setFilters((s)=>({ ...s, tri: v }))} />
-                    </div>
+            {/* Filtres en ligne (pas de bloc container) */}
+            <section className="container mx-auto px-4 md:px-6 mt-3">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <PrixChip value={filters.prix} onChange={(v)=>setFilters((s)=>({ ...s, prix: v }))} />
+                    <MarqueChip value={filters.marque} onChange={(v)=>setFilters((s)=>({ ...s, marque: v, modele: "" }))} />
+                    <ModeleChip marque={filters.marque} value={filters.modele} onChange={(v)=>setFilters((s)=>({ ...s, modele: v }))} />
+                    <AnneesChip value={filters.annees} onChange={(v)=>setFilters((s)=>({ ...s, annees: v }))} />
+                    <TransmissionChip value={filters.boites} onChange={(v)=>setFilters((s)=>({ ...s, boites: v }))} />
+                    <CarburantChip value={filters.carburants} onChange={(v)=>setFilters((s)=>({ ...s, carburants: v }))} />
+                    <PlacesChip value={filters.places} onChange={(v)=>setFilters((s)=>({ ...s, places: v }))} />
+                    <TriChip value={filters.tri} onChange={(v)=>setFilters((s)=>({ ...s, tri: v }))} />
                 </div>
             </section>
 
-            {/* Zone résultats (placeholder) */}
-            <section className="container mx-auto px-4 md:px-6 my-10">
-                {/* TODO: Liste des voitures filtrées */}
+            {/* Separator (proche des filtres) */}
+            <div className="container mx-auto px-4 md:px-6 mt-3">
+                <div className="h-px bg-border" />
+            </div>
+
+            {/* Résultats */}
+            <section className="container mx-auto px-4 md:px-6 my-8">
+                {/* TODO: CarCard list */}
             </section>
 
             <Footer />
