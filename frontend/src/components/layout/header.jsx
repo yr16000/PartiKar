@@ -148,6 +148,7 @@ function UserDropdown({ initials, avatarUrl, fullName, onLogout }) {
                 {fullName?.trim() ? <DropdownMenuLabel>{fullName}</DropdownMenuLabel> : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link to="/profile">Profil</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link to="/my-annonces">Mes annonces</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link to="/publish">Publier une voiture</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onLogout} className="text-destructive">Se déconnecter</DropdownMenuItem>
@@ -190,6 +191,9 @@ function MobileMenu() {
                         <li><SheetClose asChild><a href="/#how" className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted">Comment ça marche</a></SheetClose></li>
                         <li><SheetClose asChild><a href="/#popular" className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted">Voitures</a></SheetClose></li>
                         <li><SheetClose asChild><HashLink smooth to="/#trust" className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted">Confiance</HashLink></SheetClose></li>
+                        {isAuth && (
+                            <li><SheetClose asChild><Link to="/my-annonces" className="block rounded-md px-3 py-2 text-foreground/90 hover:bg-muted">Mes annonces</Link></SheetClose></li>
+                        )}
                     </ul>
                     <div className="mt-4 grid gap-2">
                         <SheetClose asChild>

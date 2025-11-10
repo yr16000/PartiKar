@@ -89,6 +89,10 @@ public class Voiture {
     @Column(nullable = false)
     private LocalDateTime majLe;
 
+
+    @Column(nullable = false)
+    private Integer kilometrage;
+
     //  Constructeur vide (obligatoire pour JPA)
     public Voiture() {
     }
@@ -259,5 +263,13 @@ public class Voiture {
 
     public void setMajLe(LocalDateTime majLe) {
         this.majLe = majLe;
+    }
+
+    public Integer getKilometrage() {
+        return kilometrage;
+    }
+
+    public void setKilometrage(Integer kilometrage) {
+        this.kilometrage = kilometrage;
     }
 }

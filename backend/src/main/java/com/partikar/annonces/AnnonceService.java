@@ -545,6 +545,82 @@ public class AnnonceService {
         }
         return true; // Tous les jours sont disponibles
     }
+
+    /**
+     * Récupère les annonces du propriétaire authentifié via le SecurityContext.
+     */
+    @Transactional(readOnly = true)
+    public List<AnnonceResponse> getAnnoncesUtilisateurCourant() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        String email = auth.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur authentifié introuvable"));
+        return getAnnoncesProprietaire(user.getId());
+    }
+
+    /**
+     * Met à jour une annonce existante. Seuls les champs non-nuls dans le DTO sont pris en compte.
+     *
+     * @param voitureId ID de la voiture à mettre à jour
+     * @param request DTO contenant les nouvelles valeurs des champs
+     * @return La réponse avec les détails de la voiture mise à jour
+     * @throws RuntimeException si la voiture n'existe pas ou si l'utilisateur n'est pas le propriétaire
+     */
+    @Transactional
+    public com.partikar.annonces.dto.AnnonceResponse mettreAJourAnnonce(Long voitureId, com.partikar.annonces.dto.UpdateAnnonceRequest request) {
+        // Récupère la voiture
+        com.partikar.voiture.Voiture v = voitureRepository.findById(voitureId)
+                .orElseThrow(() -> new RuntimeException("Voiture introuvable"));
+
+        // Vérifie propriétaire
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        String email = auth.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur authentifié introuvable"));
+        if (!v.getProprietaire().getId().equals(user.getId())) {
+            throw new RuntimeException("Accès refusé: vous n'êtes pas le propriétaire de cette annonce");
+        }
+
+        // Applique uniquement les champs non-nuls
+        if (request.getMarque() != null) v.setMarque(request.getMarque());
+        if (request.getModele() != null) v.setModele(request.getModele());
+        if (request.getAnnee() != null) v.setAnnee(request.getAnnee());
+        if (request.getCouleur() != null) v.setCouleur(request.getCouleur());
+        if (request.getImmatriculation() != null) {
+            // vérifie unicité si l'immatriculation change
+            String newImmat = request.getImmatriculation();
+            boolean exists = voitureRepository.findAll().stream()
+                    .anyMatch(vo -> vo.getId() != v.getId() && newImmat.equalsIgnoreCase(vo.getImmatriculation()));
+            if (exists) throw new RuntimeException("Immatriculation déjà utilisée");
+            v.setImmatriculation(newImmat);
+        }
+        if (request.getTypeCarburant() != null) v.setTypeCarburant(request.getTypeCarburant());
+        if (request.getNbPlaces() != null) v.setNbPlaces(request.getNbPlaces());
+        if (request.getDescription() != null) v.setDescription(request.getDescription());
+        if (request.getImageUrl() != null) v.setImageUrl(request.getImageUrl());
+        if (request.getPrixParJour() != null) v.setPrixParJour(request.getPrixParJour());
+        if (request.getBoiteVitesse() != null) {
+            try {
+                v.setBoiteVitesse(com.partikar.voiture.Voiture.BoiteVitesse.valueOf(request.getBoiteVitesse().toUpperCase().trim()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Boîte de vitesse invalide (MANUELLE|AUTOMATIQUE)");
+            }
+        }
+        if (request.getClimatisation() != null) v.setClimatisation(request.getClimatisation());
+        if (request.getLocalisation() != null) v.setLocalisation(request.getLocalisation());
+        if (request.getLatitude() != null) v.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null) v.setLongitude(request.getLongitude());
+        if (request.getKilometrage() != null) v.setKilometrage(request.getKilometrage());
+        v.setMajLe(java.time.LocalDateTime.now());
+
+        com.partikar.voiture.Voiture saved = voitureRepository.save(v);
+        int nbJours = disponibiliteRepository.findByVoitureId(saved.getId()).size();
+        return com.partikar.annonces.dto.AnnonceResponse.fromVoiture(saved, nbJours);
+    }
 }
-
-

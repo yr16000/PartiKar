@@ -35,6 +35,7 @@ public class AnnonceResponse {
     private Integer nbJoursDisponibles;
     private Double distanceKm; // Distance par rapport au point de recherche (en km)
     private Integer nbAvis; // Nombre d'avis pour cette voiture
+    private Integer kilometrage; // nouveau
 
     /**
      * Constructeur à partir d'une entité Voiture
@@ -63,6 +64,7 @@ public class AnnonceResponse {
         response.setProprietairePrenom(voiture.getProprietaire().getPrenom());
         response.setCreeLe(voiture.getCreeLe());
         response.setNbJoursDisponibles(nbJoursDisponibles);
+        response.setKilometrage(voiture.getKilometrage());
         return response;
     }
 
@@ -138,5 +140,7 @@ public class AnnonceResponse {
 
     public Integer getNbAvis() { return nbAvis; }
     public void setNbAvis(Integer nbAvis) { this.nbAvis = nbAvis; }
-}
 
+    public Integer getKilometrage() { return kilometrage; }
+    public void setKilometrage(Integer kilometrage) { this.kilometrage = kilometrage; }
+}

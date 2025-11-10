@@ -12,4 +12,3 @@ public enum TriOption {
     NB_AVIS_ASC,            // Nombre d'avis croissant
     NB_AVIS_DESC            // Nombre d'avis décroissant
 }
-

@@ -43,7 +43,7 @@ public class AnnonceController {
      * Récupère toutes les annonces d'un propriétaire.
      * GET /api/annonces/proprietaire/1
      */
-    @GetMapping("/proprietaire/{proprietaireId}")
+    @GetMapping("/proprietaire/{proprietaireId:\\d+}")
     public ResponseEntity<List<AnnonceResponse>> getAnnoncesProprietaire(
             @PathVariable Long proprietaireId) {
         List<AnnonceResponse> annonces = annonceService.getAnnoncesProprietaire(proprietaireId);
@@ -51,10 +51,10 @@ public class AnnonceController {
     }
 
     /**
-     * Récupère une annonce par son ID.
-     * GET /api/annonces/1
+     * Récupère une annonce par son ID (nouveau chemin pour éviter conflit avec /mine)
+     * GET /api/annonces/id/1
      */
-    @GetMapping("/{voitureId}")
+    @GetMapping("/id/{voitureId}")
     public ResponseEntity<?> getAnnonceById(@PathVariable Long voitureId) {
         try {
             AnnonceResponse response = annonceService.getAnnonceById(voitureId);
@@ -119,10 +119,10 @@ public class AnnonceController {
     }
 
     /**
-     * Supprime une annonce (soft delete).
-     * DELETE /api/annonces/1?proprietaireId=1
+     * Suppression (soft delete) d'une annonce par ID.
+     * DELETE /api/annonces/id/1?proprietaireId=1
      */
-    @DeleteMapping("/{voitureId}")
+    @DeleteMapping("/id/{voitureId}")
     public ResponseEntity<?> supprimerAnnonce(
             @PathVariable Long voitureId,
             @RequestParam Long proprietaireId) {
@@ -131,6 +131,41 @@ public class AnnonceController {
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * Récupère les annonces du propriétaire authentifié.
+     * GET /api/annonces/mine
+     */
+    @GetMapping("/mine")
+    public ResponseEntity<?> getMesAnnonces() {
+        try {
+            List<AnnonceResponse> annonces = annonceService.getAnnoncesUtilisateurCourant();
+            return ResponseEntity.ok(annonces);
+        } catch (RuntimeException e) {
+            HttpStatus status = e.getMessage() != null && e.getMessage().toLowerCase().contains("authentifi")
+                    ? HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * Met à jour une annonce existante.
+     * PUT /api/annonces/id/{voitureId}
+     */
+    @PutMapping("/id/{voitureId}")
+    public ResponseEntity<?> mettreAJourAnnonce(
+            @PathVariable Long voitureId,
+            @RequestBody com.partikar.annonces.dto.UpdateAnnonceRequest request) {
+        try {
+            AnnonceResponse resp = annonceService.mettreAJourAnnonce(voitureId, request);
+            return ResponseEntity.ok(resp);
+        } catch (RuntimeException e) {
+            HttpStatus status = e.getMessage() != null && e.getMessage().toLowerCase().contains("accès refusé")
+                    ? HttpStatus.FORBIDDEN : (e.getMessage() != null && e.getMessage().toLowerCase().contains("authentifi")
+                    ? HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST);
+            return ResponseEntity.status(status).body(new ErrorResponse(e.getMessage()));
         }
     }
 
