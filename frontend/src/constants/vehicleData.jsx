@@ -1,4 +1,4 @@
-// src/constants/vehicleData.js
+// src/constants/vehicleData.jsx
 // Constantes centralisées pour les données des véhicules
 // Utilisées dans Publish, recherche, filtrage, etc.
 
