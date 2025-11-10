@@ -54,7 +54,7 @@ public class AnnonceService {
      * @throws RuntimeException si le propriétaire n'existe pas ou si les données sont invalides
      */
     @Transactional
-    public AnnonceResponse creerAnnonce(Long proprietaireId, CreerAnnonceRequest request) {
+    public AnnonceResponse creerAnnonce(Long proprietaireId, com.partikar.annonces.dto.CreerAnnonceRequest request) {
         try {
             // LOG : dump léger du payload utile pour debug
             logger.info("Création annonce payload: immatriculation={}, marque={}, modele={}, typeCarburant={}, boiteVitesse={}, prixParJour={}",
@@ -90,6 +90,11 @@ public class AnnonceService {
                 throw new RuntimeException("Une voiture avec cette immatriculation existe déjà");
             }
 
+            // Validation : kilométrage
+            if (request.getKilometrage() == null || request.getKilometrage() < 0) {
+                throw new RuntimeException("Le champ 'kilometrage' est obligatoire et doit être >= 0");
+            }
+
             // Création de la voiture
             Voiture voiture = new Voiture();
             voiture.setProprietaire(proprietaire);
@@ -105,6 +110,7 @@ public class AnnonceService {
             voiture.setKilometrage(request.getKilometrage());
             voiture.setStatut("disponible"); // Statut initial
             voiture.setPrixParJour(request.getPrixParJour());
+            voiture.setKilometrage(request.getKilometrage());
 
             // Conversion de la boîte de vitesse
             if (request.getBoiteVitesse() == null) {
@@ -620,6 +626,38 @@ public class AnnonceService {
         if (request.getKilometrage() != null) v.setKilometrage(request.getKilometrage());
         v.setMajLe(java.time.LocalDateTime.now());
 
+        // Mise à jour des disponibilités si fournie
+        if (request.getDisponibilites() != null && !request.getDisponibilites().isEmpty()) {
+            // supprimer les anciennes
+            List<com.partikar.disponibilite.Disponibilite> anciennes = disponibiliteRepository.findByVoitureId(v.getId());
+            disponibiliteRepository.deleteAll(anciennes);
+            for (com.partikar.annonces.dto.CreerAnnonceRequest.DisponibiliteDTO d : request.getDisponibilites()) {
+                com.partikar.disponibilite.Disponibilite dispo = new com.partikar.disponibilite.Disponibilite();
+                dispo.setVoiture(v);
+                dispo.setJour(d.getJour());
+                dispo.setStatut(com.partikar.disponibilite.Disponibilite.Statut.DISPONIBLE);
+                dispo.setPrixSpecifique(d.getPrixSpecifique());
+                disponibiliteRepository.save(dispo);
+            }
+        } else if (request.getDateDebut() != null && request.getDateFin() != null) {
+            if (request.getDateFin().isBefore(request.getDateDebut())) {
+                throw new RuntimeException("dateFin doit être >= dateDebut");
+            }
+            // remplacer anciennes par nouvelle plage
+            List<com.partikar.disponibilite.Disponibilite> anciennes = disponibiliteRepository.findByVoitureId(v.getId());
+            disponibiliteRepository.deleteAll(anciennes);
+            java.time.LocalDate cur = request.getDateDebut();
+            while (!cur.isAfter(request.getDateFin())) {
+                com.partikar.disponibilite.Disponibilite dispo = new com.partikar.disponibilite.Disponibilite();
+                dispo.setVoiture(v);
+                dispo.setJour(cur);
+                dispo.setStatut(com.partikar.disponibilite.Disponibilite.Statut.DISPONIBLE);
+                dispo.setPrixSpecifique(null);
+                disponibiliteRepository.save(dispo);
+                cur = cur.plusDays(1);
+            }
+        }
+        v.setMajLe(java.time.LocalDateTime.now());
         com.partikar.voiture.Voiture saved = voitureRepository.save(v);
         int nbJours = disponibiliteRepository.findByVoitureId(saved.getId()).size();
         return com.partikar.annonces.dto.AnnonceResponse.fromVoiture(saved, nbJours);
