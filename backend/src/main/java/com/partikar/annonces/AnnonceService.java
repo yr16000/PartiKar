@@ -102,6 +102,7 @@ public class AnnonceService {
             voiture.setNbPlaces(request.getNbPlaces());
             voiture.setDescription(request.getDescription());
             voiture.setImageUrl(request.getImageUrl());
+            voiture.setKilometrage(request.getKilometrage());
             voiture.setStatut("disponible"); // Statut initial
             voiture.setPrixParJour(request.getPrixParJour());
 

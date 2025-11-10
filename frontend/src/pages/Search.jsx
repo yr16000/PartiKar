@@ -250,6 +250,67 @@ function AnneesChip({ value, onChange }) {
     );
 }
 
+/* === AJOUTER CE NOUVEAU CHIP APRÈS AnneesChip === */
+function KilometrageChip({ value, onChange }) {
+    const [open, setOpen] = useState(false);
+    const [min, setMin] = useState(value?.min || "");
+    const [max, setMax] = useState(value?.max || "");
+    const isActive = !!(min || max);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <button className="focus:outline-none">
+                    <Chip active={isActive}>Kilométrage</Chip>
+                </button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="start" sideOffset={8} avoidCollisions={false} className="w-[300px] p-0">
+                <Card>
+                    <CardContent className="p-4 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs">Min (km)</Label>
+                                <Input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    value={min}
+                                    onChange={(e)=>setMin(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <Label className="text-xs">Max (km)</Label>
+                                <Input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    value={max}
+                                    onChange={(e)=>setMax(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <Button
+                                variant="outline" size="sm"
+                                onClick={()=>{ setMin(""); setMax(""); onChange?.({ min:"", max:"" }); }}
+                            >
+                                Réinitialiser
+                            </Button>
+                            <Button
+                                variant="brand" size="sm"
+                                onClick={()=>{ onChange?.({ min, max }); setOpen(false); }}
+                            >
+                                Afficher
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+
 function TransmissionChip({ value = [], onChange }) {
     const [open, setOpen] = useState(false);
     const [sel, setSel] = useState(new Set(value));
@@ -399,6 +460,7 @@ export default function Search() {
         marque: "",
         modele: "",
         annees: { min: "", max: "" },
+        kilometrage: { min: "", max: "" },
         boites: [],
         carburants: [],
         places: [],
@@ -422,11 +484,14 @@ export default function Search() {
 
             {/* Filtres en ligne (pas de bloc container) */}
             <section className="container mx-auto px-4 md:px-6 mt-3">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <PrixChip value={filters.prix} onChange={(v)=>setFilters((s)=>({ ...s, prix: v }))} />
+                <div className="flex flex-wrap justify-center items-center gap-2 overflow-x-auto pb-1
+    [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
+                <PrixChip value={filters.prix} onChange={(v)=>setFilters((s)=>({ ...s, prix: v }))} />
                     <MarqueChip value={filters.marque} onChange={(v)=>setFilters((s)=>({ ...s, marque: v, modele: "" }))} />
                     <ModeleChip marque={filters.marque} value={filters.modele} onChange={(v)=>setFilters((s)=>({ ...s, modele: v }))} />
                     <AnneesChip value={filters.annees} onChange={(v)=>setFilters((s)=>({ ...s, annees: v }))} />
+                    <KilometrageChip value={filters.kilometrage} onChange={(v)=>setFilters(s=>({ ...s, kilometrage: v }))} />
                     <TransmissionChip value={filters.boites} onChange={(v)=>setFilters((s)=>({ ...s, boites: v }))} />
                     <CarburantChip value={filters.carburants} onChange={(v)=>setFilters((s)=>({ ...s, carburants: v }))} />
                     <PlacesChip value={filters.places} onChange={(v)=>setFilters((s)=>({ ...s, places: v }))} />

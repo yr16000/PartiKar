@@ -22,6 +22,7 @@ public class CreerAnnonceRequest {
     private Integer nbPlaces;
     private String description;
     private String imageUrl;
+    private Integer kilometrage;
 
     // Prix et équipements
     private BigDecimal prixParJour;
@@ -46,6 +47,14 @@ public class CreerAnnonceRequest {
     // Getters et Setters
     public String getMarque() { return marque; }
     public void setMarque(String marque) { this.marque = marque; }
+
+    public Integer getKilometrage() {
+        return kilometrage;
+    }
+
+    public void setKilometrage(Integer kilometrage) {
+        this.kilometrage = kilometrage;
+    }
 
     public String getModele() { return modele; }
     public void setModele(String modele) { this.modele = modele; }
