@@ -70,7 +70,7 @@ export default function CarListing({ endpoint = "/api/annonces", limit }) {
                         : [];
                 let normalized = raw.map(normalize).filter(Boolean);
 
-                if (limit) normalized = normalized.slice(0, limit); // 👈 garde que 'limit' annonces
+                if (limit) normalized = normalized.slice(0, limit);
                 setItems(normalized);
             } catch {
                 setItems([]);
@@ -84,11 +84,7 @@ export default function CarListing({ endpoint = "/api/annonces", limit }) {
 
     return (
         <section className="mx-auto max-w-7xl px-4 py-12">
-            <header className="mb-6">
-                <h2 className="text-2xl font-bold">
-                    {limit ? "Annonces populaires" : "Toutes les annonces"}
-                </h2>
-            </header>
+
 
             {loading ? <Skeleton /> : <Grid items={items} />}
         </section>

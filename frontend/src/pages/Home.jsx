@@ -74,7 +74,7 @@ export default function Home() {
             <section id="popular" className="py-16 md:py-24 scroll-mt-28">
                 <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
                     <h2 className="text-2xl md:text-3xl font-semibold mb-6">
-                        Annonces populaires
+                        Annonces Récentes
                     </h2>
                     <CarListing limit={12} />
                 </div>
