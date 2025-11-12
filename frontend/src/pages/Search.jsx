@@ -1,4 +1,3 @@
-// src/pages/Search.jsx
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 import Header from "../components/layout/header.jsx";
 import SearchBar from "../components/layout/SearchBar";
@@ -42,6 +41,19 @@ function toLocalDate(d) {
     return `${y}-${m}-${day}`;
 }
 
+// Fallback géocodage simple si on a une city sans coords
+async function geocodeOnce(city) {
+    try {
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(city)}&limit=1`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (Array.isArray(data) && data[0]?.latitude != null && data[0]?.longitude != null) {
+            return { latitude: data[0].latitude, longitude: data[0].longitude };
+        }
+    } catch (_) {}
+    return null;
+}
+
 const TRI_LABELS = {
     DATE_PUBLICATION_DESC: "Plus récentes",
     DATE_PUBLICATION_ASC: "Plus anciennes",
@@ -69,11 +81,6 @@ function PrixChip({ value, onChange }) {
     const [min, setMin] = useState(value?.min || "");
     const [max, setMax] = useState(value?.max || "");
     const isActive = !!(min || max);
-
-    useEffect(() => {
-        setMin(value?.min || "");
-        setMax(value?.max || "");
-    }, [value?.min, value?.max]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -112,8 +119,6 @@ function MarqueChip({ value, onChange }) {
     const [open, setOpen] = useState(false);
     const [marque, setMarque] = useState(value || "");
     const isActive = !!marque;
-
-    useEffect(() => setMarque(value || ""), [value]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -155,8 +160,6 @@ function ModeleChip({ marque, value, onChange }) {
     const [modele, setModele] = useState(value || "");
     const isActive = !!modele;
     const disabled = !marque || (modeles || []).length === 0;
-
-    useEffect(() => setModele(value || ""), [value]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -204,11 +207,6 @@ function AnneesChip({ value, onChange }) {
     const [min, setMin] = useState(value?.min || "");
     const [max, setMax] = useState(value?.max || "");
     const isActive = !!(min || max);
-
-    useEffect(() => {
-        setMin(value?.min || "");
-        setMax(value?.max || "");
-    }, [value?.min, value?.max]);
 
     const clampYearMin = () => {
         if (min === "") return;
@@ -278,17 +276,12 @@ function AnneesChip({ value, onChange }) {
     );
 }
 
-/* === Kilométrage : UI seulement pour l’instant (non envoyé au back) === */
+/* === Kilométrage (UI seulement pour l’instant) === */
 function KilometrageChip({ value, onChange }) {
     const [open, setOpen] = useState(false);
     const [min, setMin] = useState(value?.min || "");
     const [max, setMax] = useState(value?.max || "");
     const isActive = !!(min || max);
-
-    useEffect(() => {
-        setMin(value?.min || "");
-        setMax(value?.max || "");
-    }, [value?.min, value?.max]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -331,8 +324,6 @@ function TransmissionChip({ value = [], onChange }) {
     const isActive = sel.size > 0;
     const toggle = (v)=>{ const n = new Set(sel); n.has(v) ? n.delete(v) : n.add(v); setSel(n); };
 
-    useEffect(() => setSel(new Set(value || [])), [value]);
-
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
@@ -348,9 +339,7 @@ function TransmissionChip({ value = [], onChange }) {
                         ))}
                         <div className="flex items-center justify-between pt-2">
                             <Button variant="outline" size="sm" onClick={()=>{ setSel(new Set()); onChange?.([]); }}>Réinitialiser</Button>
-                            <Button variant="brand" size="sm" onClick={()=>{ onChange?.(Array.from(sel)); setOpen(false); }}>
-                                Appliquer
-                            </Button>
+                            <Button variant="brand" size="sm" onClick={()=>{ onChange?.(Array.from(sel)); setOpen(false); }}>Appliquer</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -364,8 +353,6 @@ function CarburantChip({ value = [], onChange }) {
     const [sel, setSel] = useState(new Set(value));
     const isActive = sel.size > 0;
     const toggle = (v)=>{ const n = new Set(sel); n.has(v) ? n.delete(v) : n.add(v); setSel(n); };
-
-    useEffect(() => setSel(new Set(value || [])), [value]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -382,9 +369,7 @@ function CarburantChip({ value = [], onChange }) {
                         ))}
                         <div className="flex items-center justify-between pt-2">
                             <Button variant="outline" size="sm" onClick={()=>{ setSel(new Set()); onChange?.([]); }}>Réinitialiser</Button>
-                            <Button variant="brand" size="sm" onClick={()=>{ onChange?.(Array.from(sel)); setOpen(false); }}>
-                                Appliquer
-                            </Button>
+                            <Button variant="brand" size="sm" onClick={()=>{ onChange?.(Array.from(sel)); setOpen(false); }}>Appliquer</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -398,8 +383,6 @@ function PlacesChip({ value = [], onChange }) {
     const [sel, setSel] = useState(new Set(value));
     const isActive = sel.size > 0;
     const toggle = (v)=>{ const n = new Set(sel); n.has(v) ? n.delete(v) : n.add(v); setSel(n); };
-
-    useEffect(() => setSel(new Set(value || [])), [value]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -418,9 +401,7 @@ function PlacesChip({ value = [], onChange }) {
                         </div>
                         <div className="flex items-center justify-between pt-2">
                             <Button variant="outline" size="sm" onClick={()=>{ setSel(new Set()); onChange?.([]); }}>Réinitialiser</Button>
-                            <Button variant="brand" size="sm" onClick={()=>{ onChange?.(Array.from(sel)); setOpen(false); }}>
-                                Appliquer
-                            </Button>
+                            <Button variant="brand" size="sm" onClick={()=>{ onChange?.(Array.from(sel)); setOpen(false); }}>Appliquer</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -434,8 +415,6 @@ function TriChip({ value, onChange }) {
     const [open, setOpen] = useState(false);
     const [tri, setTri] = useState(value || "DATE_PUBLICATION_DESC");
     const isActive = tri !== "DATE_PUBLICATION_DESC";
-
-    useEffect(() => setTri(value || "DATE_PUBLICATION_DESC"), [value]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -479,13 +458,13 @@ function TriChip({ value, onChange }) {
 export default function Search() {
     const [searchParams, setSearchParams] = useSearchParams();
 
-    // Contexte venant de l’URL / SearchBar (coords + dates + city)
+    // Contexte venant de la SearchBar (lieu/coords + dates)
     const [ctx, setCtx] = useState({
+        city: "",
         latitude: null,
         longitude: null,
         dateDebut: null, // "YYYY-MM-DD"
         dateFin: null,   // "YYYY-MM-DD"
-        city: "",
     });
 
     // Filtres
@@ -494,7 +473,7 @@ export default function Search() {
         marque: "",
         modele: "",
         annees: { min: "", max: "" },
-        kilometrage: { min: "", max: "" }, // non envoyé au back (pour l’instant)
+        kilometrage: { min: "", max: "" }, // UI-only pour l’instant
         boites: [],
         carburants: [],
         places: [],
@@ -506,7 +485,7 @@ export default function Search() {
     const [erreur, setErreur] = useState(null);
     const [annonces, setAnnonces] = useState([]);
 
-    // Normalise pour CarCard (comme MyAnnonces)
+    // Normalise pour CarCard
     const normalizeAnnonce = (a) => {
         if (!a) return null;
         return {
@@ -517,45 +496,83 @@ export default function Search() {
         };
     };
 
-    // Lecture initiale des query params (si on vient de Home)
+    // Lecture initiale des query params (+ fallback géocode si city sans coords)
     useEffect(() => {
-        const lat = searchParams.get("lat");
-        const lon = searchParams.get("lon");
-        const from = searchParams.get("from");
-        const to   = searchParams.get("to");
-        const city = searchParams.get("city");
+        (async () => {
+            const city = searchParams.get("city") || "";
+            const latStr = searchParams.get("lat");
+            const lonStr = searchParams.get("lon");
+            const from = searchParams.get("from");
+            const to   = searchParams.get("to");
 
-        setCtx({
-            latitude: lat ? Number(lat) : null,
-            longitude: lon ? Number(lon) : null,
-            dateDebut: from || null,
-            dateFin:   to   || null,
-            city: city || "",
-        });
+            const lat = latStr && latStr.trim() !== "" ? Number(latStr) : null;
+            const lon = lonStr && lonStr.trim() !== "" ? Number(lonStr) : null;
+
+            // Fallback : si city présente mais pas de coords → géocode 1 fois
+            if (city && (lat == null || lon == null)) {
+                const coords = await geocodeOnce(city);
+                if (coords) {
+                    const next = new URLSearchParams(searchParams);
+                    next.set("lat", String(coords.latitude));
+                    next.set("lon", String(coords.longitude));
+                    setSearchParams(next);
+                    setCtx({
+                        city,
+                        latitude: coords.latitude,
+                        longitude: coords.longitude,
+                        dateDebut: from || null,
+                        dateFin: to || null,
+                    });
+                    return;
+                }
+            }
+
+            setCtx({
+                city,
+                latitude: lat,
+                longitude: lon,
+                dateDebut: from || null,
+                dateFin: to || null,
+            });
+        })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Handler SearchBar (mise à jour URL + contexte)
-    const handleSearchBar = useCallback(({ latitude, longitude, from, to, city }) => {
+    // Handler SearchBar en haut de la page Search
+    // remplace ton handleSearchBar par ceci
+    const handleSearchBar = useCallback(async ({ latitude, longitude, from, to, city }) => {
+        let lat = latitude, lon = longitude;
+
+        // si l'utilisateur a tapé une ville sans sélectionner une suggestion → géocode maintenant
+        if ((lat == null || lon == null) && city) {
+            const coords = await geocodeOnce(city);
+            if (coords) {
+                lat = coords.latitude;
+                lon = coords.longitude;
+            }
+        }
+
         const next = new URLSearchParams(searchParams);
-        if (latitude != null) next.set("lat", String(latitude)); else next.delete("lat");
-        if (longitude != null) next.set("lon", String(longitude)); else next.delete("lon");
-        if (from) next.set("from", toLocalDate(from)); else next.delete("from");
-        if (to)   next.set("to",   toLocalDate(to));   else next.delete("to");
-        if (city != null) next.set("city", city); else next.delete("city");
+        city ? next.set("city", city) : next.delete("city");
+        (lat != null) ? next.set("lat", String(lat)) : next.delete("lat");
+        (lon != null) ? next.set("lon", String(lon)) : next.delete("lon");
+        from ? next.set("from", toLocalDate(from)) : next.delete("from");
+        to   ? next.set("to",   toLocalDate(to))   : next.delete("to");
 
         setSearchParams(next);
 
+        // mets à jour le contexte pour déclencher fetchResults
         setCtx({
-            latitude: latitude ?? null,
-            longitude: longitude ?? null,
+            city: city || "",
+            latitude: lat ?? null,
+            longitude: lon ?? null,
             dateDebut: from ? toLocalDate(from) : null,
             dateFin:   to   ? toLocalDate(to)   : null,
-            city: city || "",
         });
     }, [searchParams, setSearchParams]);
 
-    // Construit le body aligné avec SearchAnnonceRequest (sans kilometrage)
+
+    // Construit le body aligné avec SearchAnnonceRequest (avec rayonKm)
     const buildRequestBody = () => {
         const typeCarburant = filters.carburants?.[0] || null;   // UI multi -> 1 valeur envoyée
         const boiteVitesse  = filters.boites?.[0] || null;       // idem
@@ -569,7 +586,7 @@ export default function Search() {
         return {
             latitude: ctx.latitude,
             longitude: ctx.longitude,
-            rayonKm: 10, // par défaut côté front (peut être paramétrable + tard)
+            rayonKm: 25, // ← filtre de zone (ajuste si besoin)
             dateDebut: ctx.dateDebut, // "YYYY-MM-DD"
             dateFin:   ctx.dateFin,   // "YYYY-MM-DD"
             marque: filters.marque || null,
@@ -581,6 +598,7 @@ export default function Search() {
             prixMax,
             anneeMin,
             anneeMax,
+            // kilometrageMin/Max: côté back plus tard
             triOption: filters.tri || "DATE_PUBLICATION_DESC",
         };
     };
@@ -590,6 +608,8 @@ export default function Search() {
             setLoading(true);
             setErreur(null);
             const body = buildRequestBody();
+            // Debug provisoire
+            // console.log("REQ BODY", body);
 
             const res = await fetch("/api/annonces/search", {
                 method: "POST",
@@ -611,7 +631,7 @@ export default function Search() {
         }
     }, [filters, ctx]);
 
-    // Recherche auto si on arrive avec lieu/dates
+    // Recherche auto si on a des coords ou des dates à l’arrivée
     useEffect(() => {
         if (ctx.dateDebut || ctx.dateFin || (ctx.latitude != null && ctx.longitude != null)) {
             fetchResults();
@@ -637,14 +657,16 @@ export default function Search() {
         <main className="min-h-screen bg-background text-foreground">
             <Header />
 
-            {/* SearchBar : pré-remplie avec les query params */}
+            {/* SearchBar : remonte lieu+dates et met à jour l’URL + contexte */}
             <div className="mt-0 [&>form]:bg-transparent [&>form]:border-0 [&>form]:shadow-none">
                 <SearchBar
                     variant="plain"
                     onSearch={handleSearchBar}
-                    initialCity={ctx.city || ""}
+                    initialCity={ctx.city || undefined}
                     initialFrom={ctx.dateDebut || undefined}
                     initialTo={ctx.dateFin || undefined}
+                    initialLatitude={ctx.latitude}          // ← NEW
+                    initialLongitude={ctx.longitude}        // ← NEW
                 />
             </div>
 
@@ -672,7 +694,7 @@ export default function Search() {
                 {/* Actions globales */}
                 <div className="flex justify-end gap-2 mt-3">
                     <Button variant="outline" onClick={resetAll}>Réinitialiser tout</Button>
-                    <Button variant="brand" onClick={fetchResults}>Appliquer les filtres</Button>
+                    <Button variant="brand" onClick={fetchResults}>Appliquer</Button>
                 </div>
             </section>
 
