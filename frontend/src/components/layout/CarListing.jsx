@@ -49,7 +49,7 @@ const Skeleton = () => (
     </div>
 );
 
-export default function CarListing({ endpoint = "/api/annonces" }) {
+export default function CarListing({ endpoint = "/api/annonces", limit }) {
     const [items, setItems] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
 
@@ -63,8 +63,15 @@ export default function CarListing({ endpoint = "/api/annonces" }) {
                     signal: ctrl.signal,
                 });
                 const data = await res.json();
-                const raw = Array.isArray(data?.content) ? data.content : Array.isArray(data) ? data : [];
-                setItems(raw.map(normalize).filter(Boolean));
+                const raw = Array.isArray(data?.content)
+                    ? data.content
+                    : Array.isArray(data)
+                        ? data
+                        : [];
+                let normalized = raw.map(normalize).filter(Boolean);
+
+                if (limit) normalized = normalized.slice(0, limit); // 👈 garde que 'limit' annonces
+                setItems(normalized);
             } catch {
                 setItems([]);
             } finally {
@@ -73,12 +80,14 @@ export default function CarListing({ endpoint = "/api/annonces" }) {
         })();
 
         return () => ctrl.abort();
-    }, [endpoint]);
+    }, [endpoint, limit]);
 
     return (
         <section className="mx-auto max-w-7xl px-4 py-12">
             <header className="mb-6">
-                <h2 className="text-2xl font-bold">Toutes les annonces</h2>
+                <h2 className="text-2xl font-bold">
+                    {limit ? "Annonces populaires" : "Toutes les annonces"}
+                </h2>
             </header>
 
             {loading ? <Skeleton /> : <Grid items={items} />}

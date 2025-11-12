@@ -76,7 +76,7 @@ export default function Home() {
                     <h2 className="text-2xl md:text-3xl font-semibold mb-6">
                         Annonces populaires
                     </h2>
-                    <CarListing />
+                    <CarListing limit={12} />
                 </div>
             </section>
 
