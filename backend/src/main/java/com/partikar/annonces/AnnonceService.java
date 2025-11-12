@@ -218,6 +218,7 @@ public class AnnonceService {
         List<Voiture> voitures = voitureRepository.findAll();
 
         return voitures.stream()
+            // Afficher uniquement les voitures "disponible" (avec au moins une date future disponible)
             .filter(v -> "disponible".equalsIgnoreCase(v.getStatut()))
             .map(voiture -> {
                 int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
@@ -621,8 +622,8 @@ public class AnnonceService {
         }
         if (request.getClimatisation() != null) v.setClimatisation(request.getClimatisation());
         if (request.getLocalisation() != null) v.setLocalisation(request.getLocalisation());
-        if (request.getLatitude() != null) v.setLatitude(request.getLatitude());
-        if (request.getLongitude() != null) v.setLongitude(request.getLongitude());
+        if (request.getLatitude() != null) v.setLatitude(java.math.BigDecimal.valueOf(request.getLatitude()));
+        if (request.getLongitude() != null) v.setLongitude(java.math.BigDecimal.valueOf(request.getLongitude()));
         if (request.getKilometrage() != null) v.setKilometrage(request.getKilometrage());
         v.setMajLe(java.time.LocalDateTime.now());
 
@@ -661,5 +662,89 @@ public class AnnonceService {
         com.partikar.voiture.Voiture saved = voitureRepository.save(v);
         int nbJours = disponibiliteRepository.findByVoitureId(saved.getId()).size();
         return com.partikar.annonces.dto.AnnonceResponse.fromVoiture(saved, nbJours);
+    }
+
+    /**
+     * Récupère les disponibilités d'une voiture.
+     */
+    @Transactional(readOnly = true)
+    public List<com.partikar.disponibilite.DisponibiliteResponse> getDisponibilites(Long voitureId) {
+        Voiture voiture = voitureRepository.findById(voitureId)
+                .orElseThrow(() -> new RuntimeException("Voiture introuvable avec l'ID: " + voitureId));
+
+        List<Disponibilite> disponibilites = disponibiliteRepository.findByVoitureId(voitureId);
+        return disponibilites.stream()
+                .map(d -> new com.partikar.disponibilite.DisponibiliteResponse(
+                        d.getId(),
+                        d.getJour(),
+                        d.getStatut().name(),
+                        d.getPrixSpecifique()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Met à jour automatiquement le statut d'une voiture en fonction de ses disponibilités.
+     * Appelé après une réservation ou une annulation.
+     *
+     * Logique des transitions de statut :
+     * - disponible → completement_reservee (quand toutes dates futures sont réservées)
+     * - disponible → expiree (quand toutes les dates sont passées)
+     * - completement_reservee → disponible (quand une réservation est annulée)
+     * - completement_reservee → expiree (quand toutes les dates sont passées)
+     * - inactive : ne change JAMAIS (suppression définitive par le propriétaire)
+     */
+    @Transactional
+    public void mettreAJourStatutVoiture(Long voitureId) {
+        Voiture voiture = voitureRepository.findById(voitureId)
+                .orElseThrow(() -> new RuntimeException("Voiture introuvable avec l'ID: " + voitureId));
+
+        // Si la voiture est inactive (supprimée par le propriétaire), on ne change JAMAIS son statut
+        if ("inactive".equalsIgnoreCase(voiture.getStatut())) {
+            return;
+        }
+
+        List<Disponibilite> disponibilites = disponibiliteRepository.findByVoitureId(voitureId);
+        LocalDate aujourdhui = LocalDate.now();
+
+        // Vérifier s'il y a au moins une date dans le futur (disponible ou réservée)
+        boolean aDesDatesFutures = disponibilites.stream()
+                .anyMatch(d -> d.getJour().isAfter(aujourdhui) || d.getJour().isEqual(aujourdhui));
+
+        // Si toutes les dates sont passées → expiree (peu importe le statut actuel)
+        if (!aDesDatesFutures) {
+            if (!"expiree".equalsIgnoreCase(voiture.getStatut())) {
+                logger.info("Mise à jour du statut de la voiture {} : {} → expiree (toutes les dates sont passées)",
+                    voitureId, voiture.getStatut());
+                voiture.setStatut("expiree");
+                voiture.setMajLe(LocalDateTime.now());
+                voitureRepository.save(voiture);
+            }
+            return;
+        }
+
+        // Vérifier s'il y a des dates DISPONIBLES dans le futur
+        boolean aDesDatesFuturesDisponibles = disponibilites.stream()
+                .anyMatch(d -> (d.getJour().isAfter(aujourdhui) || d.getJour().isEqual(aujourdhui))
+                    && d.getStatut() == Disponibilite.Statut.DISPONIBLE);
+
+        // Déterminer le nouveau statut
+        String nouveauStatut;
+        if (aDesDatesFuturesDisponibles) {
+            // Il y a au moins une date future disponible
+            nouveauStatut = "disponible";
+        } else {
+            // Il y a des dates futures mais toutes sont réservées
+            nouveauStatut = "completement_reservee";
+        }
+
+        // Mettre à jour le statut si nécessaire
+        if (!nouveauStatut.equalsIgnoreCase(voiture.getStatut())) {
+            logger.info("Mise à jour du statut de la voiture {} : {} → {}",
+                voitureId, voiture.getStatut(), nouveauStatut);
+            voiture.setStatut(nouveauStatut);
+            voiture.setMajLe(LocalDateTime.now());
+            voitureRepository.save(voiture);
+        }
     }
 }

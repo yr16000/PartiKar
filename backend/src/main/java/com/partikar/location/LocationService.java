@@ -31,15 +31,18 @@ public class LocationService {
     private final VoitureRepository voitureRepository;
     private final UserRepository userRepository;
     private final DisponibiliteRepository disponibiliteRepository;
+    private final com.partikar.annonces.AnnonceService annonceService;
 
     public LocationService(LocationRepository locationRepository,
                           VoitureRepository voitureRepository,
                           UserRepository userRepository,
-                          DisponibiliteRepository disponibiliteRepository) {
+                          DisponibiliteRepository disponibiliteRepository,
+                          com.partikar.annonces.AnnonceService annonceService) {
         this.locationRepository = locationRepository;
         this.voitureRepository = voitureRepository;
         this.userRepository = userRepository;
         this.disponibiliteRepository = disponibiliteRepository;
+        this.annonceService = annonceService;
     }
 
     /**
@@ -139,6 +142,9 @@ public class LocationService {
             current = current.plusDays(1);
         }
 
+        // Mettre à jour le statut de la voiture en fonction des disponibilités restantes
+        annonceService.mettreAJourStatutVoiture(voiture.getId());
+
         logger.info("Location créée avec succès: ID={}", savedLocation.getId());
 
         // Construire la réponse
@@ -231,7 +237,142 @@ public class LocationService {
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
 
+        // Mettre à jour le statut de la voiture (peut repasser à "disponible")
+        annonceService.mettreAJourStatutVoiture(location.getVoiture().getId());
+
         logger.info("Location annulée: ID={}", locationId);
+    }
+
+    /**
+     * Récupère les demandes de réservation en attente pour le propriétaire authentifié.
+     */
+    @Transactional(readOnly = true)
+    public List<LocationResponse> getDemandesEnAttenteProprietaire() {
+        // Récupérer l'utilisateur authentifié
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        String email = auth.getName();
+        User proprietaire = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        // Récupérer toutes les locations en attente pour les voitures du propriétaire
+        List<Location> locations = locationRepository.findAll().stream()
+                .filter(l -> l.getVoiture().getProprietaire().getId().equals(proprietaire.getId()))
+                .filter(l -> "EN_ATTENTE".equals(l.getStatut()))
+                .toList();
+
+        // Transformer en LocationResponse
+        return locations.stream()
+                .map(this::toLocationResponse)
+                .toList();
+    }
+
+    /**
+     * Valide (accepte) une demande de réservation.
+     */
+    @Transactional
+    public void validerReservation(Long locationId) {
+        Location location = locationRepository.findById(locationId)
+                .orElseThrow(() -> new RuntimeException("Location introuvable"));
+
+        // Vérifier que l'utilisateur est le propriétaire
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        String email = auth.getName();
+        User proprietaire = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        if (!location.getVoiture().getProprietaire().getId().equals(proprietaire.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à valider cette réservation");
+        }
+
+        // Vérifier le statut
+        if (!"EN_ATTENTE".equals(location.getStatut())) {
+            throw new RuntimeException("Cette réservation ne peut pas être validée (statut: " + location.getStatut() + ")");
+        }
+
+        // Mettre à jour le statut
+        location.setStatut("CONFIRMEE");
+        location.setMajLe(LocalDateTime.now());
+        locationRepository.save(location);
+
+        logger.info("Location validée: ID={}", locationId);
+    }
+
+    /**
+     * Annule une réservation (utilisé par le propriétaire pour refuser une demande).
+     */
+    @Transactional
+    public void annulerReservationProprietaire(Long locationId) {
+        Location location = locationRepository.findById(locationId)
+                .orElseThrow(() -> new RuntimeException("Location introuvable"));
+
+        // Vérifier que l'utilisateur est le propriétaire
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        String email = auth.getName();
+        User proprietaire = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        if (!location.getVoiture().getProprietaire().getId().equals(proprietaire.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à annuler cette réservation");
+        }
+
+        // Vérifier le statut
+        if (!"EN_ATTENTE".equals(location.getStatut())) {
+            throw new RuntimeException("Cette réservation ne peut pas être annulée (statut: " + location.getStatut() + ")");
+        }
+
+        // Libérer les disponibilités
+        List<Disponibilite> disponibilites = disponibiliteRepository.findByVoitureId(location.getVoiture().getId());
+        LocalDate current = location.getDateDebut();
+        while (!current.isAfter(location.getDateFin())) {
+            final LocalDate dateToUpdate = current;
+            disponibilites.stream()
+                    .filter(d -> d.getJour().equals(dateToUpdate))
+                    .findFirst()
+                    .ifPresent(d -> {
+                        d.setStatut(Disponibilite.Statut.DISPONIBLE);
+                        disponibiliteRepository.save(d);
+                    });
+            current = current.plusDays(1);
+        }
+
+        // Marquer la location comme annulée
+        location.setStatut("ANNULEE");
+        location.setMajLe(LocalDateTime.now());
+        locationRepository.save(location);
+
+        // Mettre à jour le statut de la voiture
+        annonceService.mettreAJourStatutVoiture(location.getVoiture().getId());
+
+        logger.info("Location annulée par le propriétaire: ID={}", locationId);
+    }
+
+    /**
+     * Convertit une Location en LocationResponse.
+     */
+    private LocationResponse toLocationResponse(Location location) {
+        LocationResponse response = new LocationResponse();
+        response.setLocationId(location.getId());
+        response.setVoitureId(location.getVoiture().getId());
+        response.setVoitureMarque(location.getVoiture().getMarque());
+        response.setVoitureModele(location.getVoiture().getModele());
+        response.setLocataireId(location.getLocataire().getId());
+        response.setLocataireNom(location.getLocataire().getNom());
+        response.setLocatairePrenom(location.getLocataire().getPrenom());
+        response.setDateDebut(location.getDateDebut());
+        response.setDateFin(location.getDateFin());
+        response.setPrixTotal(location.getPrixTotal());
+        response.setStatut(location.getStatut());
+        response.setCreeLe(location.getCreeLe());
+        return response;
     }
 }
 

@@ -21,8 +21,8 @@ public class UpdateAnnonceRequest {
     public String boiteVitesse; // string name of enum
     public Boolean climatisation;
     public String localisation;
-    public BigDecimal latitude;
-    public BigDecimal longitude;
+    public Double latitude;
+    public Double longitude;
     public Integer kilometrage;
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate dateDebut;
@@ -135,19 +135,19 @@ public class UpdateAnnonceRequest {
         this.localisation = localisation;
     }
 
-    public BigDecimal getLatitude() {
+    public Double getLatitude() {
         return latitude;
     }
 
-    public void setLatitude(BigDecimal latitude) {
+    public void setLatitude(Double latitude) {
         this.latitude = latitude;
     }
 
-    public BigDecimal getLongitude() {
+    public Double getLongitude() {
         return longitude;
     }
 
-    public void setLongitude(BigDecimal longitude) {
+    public void setLongitude(Double longitude) {
         this.longitude = longitude;
     }
 

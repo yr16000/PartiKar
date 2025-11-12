@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Menu, X, LogIn, PlusCircle, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HashLink } from "react-router-hash-link";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
     Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose,
 } from "@/components/ui/sheet";
@@ -18,6 +18,7 @@ export default function Header() {
     // Anti-flash: on lit le token dès l'init (pas après le premier render)
     const [isAuth, setIsAuth] = useState(() => !!localStorage.getItem("token"));
     const [user, setUser] = useState({ prenom: "", nom: "", avatarUrl: "" });
+    const navigate = useNavigate();
 
     // Optionnel: récupérer le profil si token présent (léger, silencieux)
     useEffect(() => {
@@ -62,6 +63,8 @@ export default function Header() {
             setUser({ prenom: "", nom: "", avatarUrl: "" });
             // notifier le reste de l'app si besoin
             window.dispatchEvent(new Event("auth:changed"));
+            // Rediriger vers l'accueil
+            navigate("/");
         });
     }
 
@@ -149,6 +152,7 @@ function UserDropdown({ initials, avatarUrl, fullName, onLogout }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link to="/profile">Profil</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link to="/my-annonces">Mes annonces</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link to="/demandes-reservation">Mes demandes de réservation</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link to="/publish">Publier une voiture</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onLogout} className="text-destructive">Se déconnecter</DropdownMenuItem>

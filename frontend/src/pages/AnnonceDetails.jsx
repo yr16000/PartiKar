@@ -358,6 +358,7 @@ export default function AnnonceDetails() {
                     description: a.description,
                     kilometrage: a.kilometrage,
                     proprietaireId: a.proprietaireId,
+                    statut: a.statut,
                 };
                 setData(norm);
                 setOriginalData(norm);
@@ -492,8 +493,17 @@ export default function AnnonceDetails() {
                         <h1 className="text-2xl md:text-3xl font-bold">{title || `Annonce #${id}`}</h1>
                         {published && <p className="text-sm text-muted-foreground">Publié le {published}</p>}
                         {isOwner && <p className="text-xs text-indigo-600 mt-1">Vous êtes le propriétaire de ce véhicule.</p>}
+                        {isOwner && data.statut?.toLowerCase() === 'inactive' && (
+                            <p className="text-xs text-red-600 mt-1 font-medium">Cette annonce est inactive et ne peut plus être modifiée ou supprimée.</p>
+                        )}
+                        {isOwner && data.statut?.toLowerCase() === 'completement_reservee' && (
+                            <p className="text-xs text-orange-600 mt-1 font-medium">Cette annonce est complètement réservée pour toutes les dates disponibles.</p>
+                        )}
+                        {isOwner && data.statut?.toLowerCase() === 'expiree' && (
+                            <p className="text-xs text-gray-600 mt-1 font-medium">Cette annonce a expiré (toutes les dates sont passées).</p>
+                        )}
                     </div>
-                    {isOwner && !editing && (
+                    {isOwner && !editing && data.statut?.toLowerCase() !== 'inactive' && data.statut?.toLowerCase() !== 'expiree' && (
                         <div className="flex gap-2">
                             <Button variant="outline" onClick={startEdit}><Pencil className="w-4 h-4" /> Modifier</Button>
                             <Button variant="destructive" onClick={() => setDeleteConfirm(true)}>Supprimer</Button>
@@ -723,6 +733,24 @@ export default function AnnonceDetails() {
                                     <Info label="Localisation" value={data.localisation} />
                                     <Info label="Kilométrage" value={data.kilometrage} />
                                     <Info label="Créée le" value={published} />
+                                    {isOwner && (
+                                        <div className="flex flex-col gap-1 p-3 rounded-lg border bg-white">
+                                            <span className="text-xs uppercase tracking-wide text-muted-foreground">Statut</span>
+                                            <span className={`text-sm font-medium ${
+                                                data.statut?.toLowerCase() === 'inactive' ? 'text-red-600' : 
+                                                data.statut?.toLowerCase() === 'disponible' ? 'text-green-600' : 
+                                                data.statut?.toLowerCase() === 'completement_reservee' ? 'text-orange-600' :
+                                                data.statut?.toLowerCase() === 'expiree' ? 'text-gray-600' :
+                                                'text-blue-600'
+                                            }`}>
+                                                {data.statut?.toLowerCase() === 'inactive' ? 'Inactive' :
+                                                 data.statut?.toLowerCase() === 'disponible' ? 'Disponible' :
+                                                 data.statut?.toLowerCase() === 'completement_reservee' ? 'Complètement réservée' :
+                                                 data.statut?.toLowerCase() === 'expiree' ? 'Expirée' :
+                                                 data.statut || '—'}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <h3 className="text-md font-semibold mb-2">Description</h3>

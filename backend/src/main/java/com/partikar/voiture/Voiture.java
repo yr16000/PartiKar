@@ -97,9 +97,17 @@ public class Voiture {
     public Voiture() {
     }
 
-    //  Enum pour BoiteVitesse (à mettre dans ce fichier ou un fichier séparé)
+    //  Enum pour BoiteVitesse
     public enum BoiteVitesse {
         MANUELLE, AUTOMATIQUE
+    }
+
+    //  Enum pour le statut de la voiture
+    public enum StatutVoiture {
+        DISPONIBLE,              // La voiture a des dates disponibles dans le futur
+        COMPLETEMENT_RESERVEE,   // Toutes les dates sont réservées
+        EXPIREE,                 // La dernière date de disponibilité est passée
+        INACTIVE                 // Le propriétaire a supprimé l'annonce (soft delete)
     }
 
     //  Getters et Setters (Générés par l'IDE)

@@ -36,7 +36,12 @@ export default function MyAnnonces() {
             throw new Error(txt || 'Erreur lors du chargement des annonces');
         }
         const data = await res.json();
-        setAnnonces(Array.isArray(data) ? data : []);
+        // Normaliser les données pour s'assurer que voitureId est présent
+        const normalized = Array.isArray(data) ? data.map(a => ({
+          ...a,
+          id: a.voitureId || a.id
+        })) : [];
+        setAnnonces(normalized);
       } catch (e) {
         setError(e.message);
       } finally {
@@ -45,6 +50,18 @@ export default function MyAnnonces() {
     };
     fetchMine();
   }, [token, navigate]);
+
+  // Séparer les annonces actives et inactives
+  // Actives : disponible ou completement_reservee
+  // Passées : inactive ou expiree
+  const annoncesActives = annonces.filter(a => {
+    const statut = a.statut?.toLowerCase();
+    return statut === 'disponible' || statut === 'completement_reservee' || !statut;
+  });
+  const annoncesInactives = annonces.filter(a => {
+    const statut = a.statut?.toLowerCase();
+    return statut === 'inactive' || statut === 'expiree';
+  });
 
   return (
     <main className='min-h-screen flex flex-col bg-background text-foreground'>
@@ -73,13 +90,43 @@ export default function MyAnnonces() {
           </div>
         )}
 
-        <div className='grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
-          {annonces.map(a => (
-            <Link key={a.voitureId} to={`/annonces/${a.voitureId}`} className='block'>
-              <CarCard car={a} />
-            </Link>
-          ))}
-        </div>
+        {!loading && !error && annonces.length > 0 && (
+          <>
+            {/* ANNONCES ACTIVES */}
+            {annoncesActives.length > 0 && (
+              <div className='mb-12'>
+                <div className='mb-6'>
+                  <h2 className='text-xl font-semibold'>Mes annonces actuelles</h2>
+                  <p className='text-sm text-muted-foreground'>Vos véhicules actuellement disponibles à la location</p>
+                </div>
+                <div className='grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                  {annoncesActives.map(a => (
+                    <Link key={a.id || a.voitureId} to={`/annonces/${a.id || a.voitureId}`} className='block'>
+                      <CarCard car={a} />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ANNONCES INACTIVES */}
+            {annoncesInactives.length > 0 && (
+              <div>
+                <div className='mb-6'>
+                  <h2 className='text-xl font-semibold'>Mes annonces passées</h2>
+                  <p className='text-sm text-muted-foreground'>Vos véhicules qui ne sont plus disponibles à la location</p>
+                </div>
+                <div className='grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 opacity-60'>
+                  {annoncesInactives.map(a => (
+                    <Link key={a.id || a.voitureId} to={`/annonces/${a.id || a.voitureId}`} className='block'>
+                      <CarCard car={a} />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </section>
       <Footer />
     </main>
