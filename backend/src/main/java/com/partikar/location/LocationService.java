@@ -32,17 +32,20 @@ public class LocationService {
     private final UserRepository userRepository;
     private final DisponibiliteRepository disponibiliteRepository;
     private final com.partikar.annonces.AnnonceService annonceService;
+    private final com.partikar.avis.AvisRepository avisRepository;
 
     public LocationService(LocationRepository locationRepository,
                           VoitureRepository voitureRepository,
                           UserRepository userRepository,
                           DisponibiliteRepository disponibiliteRepository,
-                          com.partikar.annonces.AnnonceService annonceService) {
+                          com.partikar.annonces.AnnonceService annonceService,
+                          com.partikar.avis.AvisRepository avisRepository) {
         this.locationRepository = locationRepository;
         this.voitureRepository = voitureRepository;
         this.userRepository = userRepository;
         this.disponibiliteRepository = disponibiliteRepository;
         this.annonceService = annonceService;
+        this.avisRepository = avisRepository;
     }
 
     /**
@@ -96,7 +99,23 @@ public class LocationService {
             throw new RuntimeException("Vous ne pouvez pas louer votre propre voiture");
         }
 
+        // Vérifier qu'il n'y a pas déjà une demande EN_ATTENTE exactement identique
+        // (même utilisateur + même voiture + même dateDebut + même dateFin)
+        List<Location> demandesEnAttente = locationRepository.findByVoitureIdAndLocataireIdAndStatut(
+                voiture.getId(), locataire.getId(), "EN_ATTENTE");
+
+        for (Location demande : demandesEnAttente) {
+            boolean memeDates = demande.getDateDebut().equals(request.getDateDebut())
+                             && demande.getDateFin().equals(request.getDateFin());
+
+            if (memeDates) {
+                throw new RuntimeException("Vous avez déjà une demande de réservation en attente pour cette voiture avec exactement les mêmes dates");
+            }
+        }
+
         // Vérifier la disponibilité pour toute la période
+        // Note : Les dates DISPONIBLES excluent déjà les réservations ACCEPTÉES
+        // Les demandes EN_ATTENTE ne bloquent PAS les dates (plusieurs utilisateurs peuvent demander les mêmes dates)
         List<Disponibilite> disponibilites = disponibiliteRepository.findByVoitureId(voiture.getId());
         LocalDate current = request.getDateDebut();
         while (!current.isAfter(request.getDateFin())) {
@@ -128,24 +147,11 @@ public class LocationService {
 
         Location savedLocation = locationRepository.save(location);
 
-        // Marquer les jours comme RESERVE
-        current = request.getDateDebut();
-        while (!current.isAfter(request.getDateFin())) {
-            final LocalDate dateToUpdate = current;
-            disponibilites.stream()
-                    .filter(d -> d.getJour().equals(dateToUpdate))
-                    .findFirst()
-                    .ifPresent(d -> {
-                        d.setStatut(Disponibilite.Statut.RESERVE);
-                        disponibiliteRepository.save(d);
-                    });
-            current = current.plusDays(1);
-        }
+        // NE PAS marquer les jours comme RESERVE pour une demande EN_ATTENTE
+        // Les dates seront réservées uniquement lors de l'ACCEPTATION de la demande
+        // Cela permet à plusieurs utilisateurs de demander les mêmes dates
 
-        // Mettre à jour le statut de la voiture en fonction des disponibilités restantes
-        annonceService.mettreAJourStatutVoiture(voiture.getId());
-
-        logger.info("Location créée avec succès: ID={}", savedLocation.getId());
+        logger.info("Demande de location créée avec succès: ID={}, statut=EN_ATTENTE", savedLocation.getId());
 
         // Construire la réponse
         LocationResponse response = new LocationResponse();
@@ -217,30 +223,15 @@ public class LocationService {
             throw new RuntimeException("Cette location ne peut pas être annulée (statut: " + location.getStatut() + ")");
         }
 
-        // Libérer les disponibilités
-        List<Disponibilite> disponibilites = disponibiliteRepository.findByVoitureId(location.getVoiture().getId());
-        LocalDate current = location.getDateDebut();
-        while (!current.isAfter(location.getDateFin())) {
-            final LocalDate dateToUpdate = current;
-            disponibilites.stream()
-                    .filter(d -> d.getJour().equals(dateToUpdate))
-                    .findFirst()
-                    .ifPresent(d -> {
-                        d.setStatut(Disponibilite.Statut.DISPONIBLE);
-                        disponibiliteRepository.save(d);
-                    });
-            current = current.plusDays(1);
-        }
+        // Pour une demande EN_ATTENTE, pas besoin de libérer les disponibilités
+        // car elles n'ont jamais été réservées
 
         // Marquer la location comme annulée
         location.setStatut("ANNULEE");
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
 
-        // Mettre à jour le statut de la voiture (peut repasser à "disponible")
-        annonceService.mettreAJourStatutVoiture(location.getVoiture().getId());
-
-        logger.info("Location annulée: ID={}", locationId);
+        logger.info("Demande de location annulée: ID={}", locationId);
     }
 
     /**
@@ -261,6 +252,31 @@ public class LocationService {
         List<Location> locations = locationRepository.findAll().stream()
                 .filter(l -> l.getVoiture().getProprietaire().getId().equals(proprietaire.getId()))
                 .filter(l -> "EN_ATTENTE".equals(l.getStatut()))
+                .toList();
+
+        // Transformer en LocationResponse
+        return locations.stream()
+                .map(this::toLocationResponse)
+                .toList();
+    }
+
+    /**
+     * Récupère toutes les demandes de réservation du locataire authentifié (quel que soit le statut).
+     */
+    @Transactional(readOnly = true)
+    public List<LocationResponse> getMesDemandesReservation() {
+        // Récupérer l'utilisateur authentifié
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        String email = auth.getName();
+        User locataire = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        // Récupérer toutes les locations du locataire
+        List<Location> locations = locationRepository.findAll().stream()
+                .filter(l -> l.getLocataire().getId().equals(locataire.getId()))
                 .toList();
 
         // Transformer en LocationResponse
@@ -295,12 +311,30 @@ public class LocationService {
             throw new RuntimeException("Cette réservation ne peut pas être validée (statut: " + location.getStatut() + ")");
         }
 
+        // Marquer les dates comme RESERVE lors de l'acceptation
+        List<Disponibilite> disponibilites = disponibiliteRepository.findByVoitureId(location.getVoiture().getId());
+        LocalDate current = location.getDateDebut();
+        while (!current.isAfter(location.getDateFin())) {
+            final LocalDate dateToUpdate = current;
+            disponibilites.stream()
+                    .filter(d -> d.getJour().equals(dateToUpdate))
+                    .findFirst()
+                    .ifPresent(d -> {
+                        d.setStatut(Disponibilite.Statut.RESERVE);
+                        disponibiliteRepository.save(d);
+                    });
+            current = current.plusDays(1);
+        }
+
         // Mettre à jour le statut
         location.setStatut("CONFIRMEE");
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
 
-        logger.info("Location validée: ID={}", locationId);
+        // Mettre à jour le statut de la voiture
+        annonceService.mettreAJourStatutVoiture(location.getVoiture().getId());
+
+        logger.info("Location validée et dates réservées: ID={}", locationId);
     }
 
     /**
@@ -329,30 +363,52 @@ public class LocationService {
             throw new RuntimeException("Cette réservation ne peut pas être annulée (statut: " + location.getStatut() + ")");
         }
 
-        // Libérer les disponibilités
-        List<Disponibilite> disponibilites = disponibiliteRepository.findByVoitureId(location.getVoiture().getId());
-        LocalDate current = location.getDateDebut();
-        while (!current.isAfter(location.getDateFin())) {
-            final LocalDate dateToUpdate = current;
-            disponibilites.stream()
-                    .filter(d -> d.getJour().equals(dateToUpdate))
-                    .findFirst()
-                    .ifPresent(d -> {
-                        d.setStatut(Disponibilite.Statut.DISPONIBLE);
-                        disponibiliteRepository.save(d);
-                    });
-            current = current.plusDays(1);
-        }
+        // Pour une demande EN_ATTENTE, pas besoin de libérer les disponibilités
+        // car elles n'ont jamais été réservées
 
         // Marquer la location comme annulée
         location.setStatut("ANNULEE");
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
 
-        // Mettre à jour le statut de la voiture
-        annonceService.mettreAJourStatutVoiture(location.getVoiture().getId());
+        logger.info("Demande de location refusée par le propriétaire: ID={}", locationId);
+    }
 
-        logger.info("Location annulée par le propriétaire: ID={}", locationId);
+    /**
+     * Annule une demande de réservation (utilisé par le locataire pour annuler sa propre demande).
+     */
+    @Transactional
+    public void annulerDemandeLocataire(Long locationId) {
+        Location location = locationRepository.findById(locationId)
+                .orElseThrow(() -> new RuntimeException("Location introuvable"));
+
+        // Vérifier que l'utilisateur est le locataire
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        String email = auth.getName();
+        User locataire = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        if (!location.getLocataire().getId().equals(locataire.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à annuler cette demande");
+        }
+
+        // Vérifier le statut
+        if (!"EN_ATTENTE".equals(location.getStatut())) {
+            throw new RuntimeException("Cette demande ne peut pas être annulée (statut: " + location.getStatut() + ")");
+        }
+
+        // Pour une demande EN_ATTENTE, pas besoin de libérer les disponibilités
+        // car elles n'ont jamais été réservées
+
+        // Marquer la location comme annulée
+        location.setStatut("ANNULEE");
+        location.setMajLe(LocalDateTime.now());
+        locationRepository.save(location);
+
+        logger.info("Demande de location annulée par le locataire: ID={}", locationId);
     }
 
     /**
@@ -367,6 +423,21 @@ public class LocationService {
         response.setLocataireId(location.getLocataire().getId());
         response.setLocataireNom(location.getLocataire().getNom());
         response.setLocatairePrenom(location.getLocataire().getPrenom());
+
+        // Calculer la note moyenne et le nombre d'avis du locataire
+        List<com.partikar.avis.Avis> avisLocataire = avisRepository.findByCibleId(location.getLocataire().getId());
+        if (!avisLocataire.isEmpty()) {
+            double moyenne = avisLocataire.stream()
+                .mapToInt(com.partikar.avis.Avis::getNoteUtilisateur)
+                .average()
+                .orElse(0.0);
+            response.setLocataireMoyenneAvis(moyenne);
+            response.setLocataireNbAvis(avisLocataire.size());
+        } else {
+            response.setLocataireMoyenneAvis(null);
+            response.setLocataireNbAvis(0);
+        }
+
         response.setDateDebut(location.getDateDebut());
         response.setDateFin(location.getDateFin());
         response.setPrixTotal(location.getPrixTotal());

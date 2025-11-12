@@ -69,7 +69,7 @@ export default function AnnonceDetails() {
         const opt = { day: "2-digit", month: "short" };
         const f = r.from.toLocaleDateString("fr-FR", opt);
         const t = (r.to ?? r.from).toLocaleDateString("fr-FR", opt);
-        return `${f} ${h} → ${t} ${h}`;
+        return `${f} → ${t}`; // Plus d'heure affichée
     };
 
     const [data, setData] = useState(null);
@@ -121,8 +121,8 @@ export default function AnnonceDetails() {
             setReservationSuccess(true);
 
             setTimeout(() => {
-                navigate("/profile", { state: { tab: "reservations" } });
-            }, 2000);
+                navigate("/profile", { state: { tab: "mes-demandes" } });
+            }, 1500);
         } catch (error) {
             console.error("Erreur réservation:", error);
             setReservationError(error.message || "Une erreur est survenue lors de la réservation");
@@ -810,19 +810,6 @@ export default function AnnonceDetails() {
                                                 </PopoverContent>
                                             </Popover>
                                         </div>
-                                        <div className="flex flex-col text-left min-w-0">
-                                            <span className="text-sm text-gray-600 mb-1 leading-none">Heure</span>
-                                            <Select value={hour} onValueChange={setHour}>
-                                                <SelectTrigger className="!h-12 w-full !text-base border border-gray-300 rounded-lg shadow-sm bg-white flex items-center justify-between box-border !px-4 !py-0 leading-none pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                                    <SelectValue placeholder="10:00" />
-                                                </SelectTrigger>
-                                                <SelectContent position="popper" side="bottom" align="start" sideOffset={8} avoidCollisions={false} className="bg-white border border-gray-200 shadow-xl rounded-lg z-[401]">
-                                                    {hours.map((h) => (
-                                                        <SelectItem key={h} value={h} className="cursor-pointer">{h}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
                                         <div className="rounded-lg border bg-white px-4 py-3 text-sm">
                                             <div className="text-gray-600 mb-1">Lieu de prise en charge et de retour</div>
                                             <div className="font-medium inline-flex items-center gap-1">
@@ -836,8 +823,16 @@ export default function AnnonceDetails() {
                                         {reservationSuccess && (
                                             <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">✅ Réservation confirmée ! Redirection...</div>
                                         )}
-                                        <Button className="w-full h-12" onClick={handleReservation} disabled={reserving || reservationSuccess}>
-                                            {reserving ? "Réservation en cours..." : reservationSuccess ? "✓ Réservé" : "Réserver"}
+                                        <Button
+                                            className="w-full h-12"
+                                            onClick={handleReservation}
+                                            disabled={reserving || reservationSuccess}
+                                        >
+                                            {reserving
+                                                ? "Réservation en cours..."
+                                                : reservationSuccess
+                                                    ? "✓ Réservé"
+                                                    : "Réserver"}
                                         </Button>
                                     </div>
                                 </div>

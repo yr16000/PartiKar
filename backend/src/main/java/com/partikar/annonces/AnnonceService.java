@@ -36,9 +36,9 @@ public class AnnonceService {
     private final com.partikar.avis.AvisRepository avisRepository;
 
     public AnnonceService(VoitureRepository voitureRepository,
-                         DisponibiliteRepository disponibiliteRepository,
-                         UserRepository userRepository,
-                         com.partikar.avis.AvisRepository avisRepository) {
+                          DisponibiliteRepository disponibiliteRepository,
+                          UserRepository userRepository,
+                          com.partikar.avis.AvisRepository avisRepository) {
         this.voitureRepository = voitureRepository;
         this.disponibiliteRepository = disponibiliteRepository;
         this.userRepository = userRepository;
@@ -84,10 +84,34 @@ public class AnnonceService {
                         .orElseThrow(() -> new RuntimeException("Propriétaire introuvable pour l'utilisateur authentifié"));
             }
 
-            // Validation : vérifier que l'immatriculation est unique
-            if (request.getImmatriculation() != null && voitureRepository.findAll().stream()
-                    .anyMatch(v -> v.getImmatriculation() != null && v.getImmatriculation().equalsIgnoreCase(request.getImmatriculation()))) {
-                throw new RuntimeException("Une voiture avec cette immatriculation existe déjà");
+            // Validation : vérifier que l'immatriculation n'existe pas pour une voiture ACTIVE
+            // On peut réutiliser une immatriculation UNIQUEMENT si l'ancienne voiture est "inactive" ou "expiree"
+            if (request.getImmatriculation() != null) {
+                List<Voiture> voituresAvecMemeImmat = voitureRepository.findAll().stream()
+                    .filter(v -> v.getImmatriculation() != null
+                        && v.getImmatriculation().equalsIgnoreCase(request.getImmatriculation()))
+                    .toList();
+
+                // Vérifier s'il existe des voitures actives avec cette immatriculation
+                boolean immatExisteActive = voituresAvecMemeImmat.stream()
+                    .anyMatch(v -> !"inactive".equalsIgnoreCase(v.getStatut())
+                        && !"expiree".equalsIgnoreCase(v.getStatut()));
+
+                if (immatExisteActive) {
+                    throw new RuntimeException("Une voiture active avec cette immatriculation existe déjà");
+                }
+
+                // Limiter à maximum 1 voiture inactive/expirée avec la même immatriculation
+                // (pour éviter d'avoir 100 voitures inactives avec la même plaque)
+                long nbInactives = voituresAvecMemeImmat.stream()
+                    .filter(v -> "inactive".equalsIgnoreCase(v.getStatut())
+                        || "expiree".equalsIgnoreCase(v.getStatut()))
+                    .count();
+
+                if (nbInactives > 0) {
+                    logger.warn("Réutilisation de l'immatriculation {} (ancienne voiture inactive/expirée)",
+                        request.getImmatriculation());
+                }
             }
 
             // Validation : kilométrage
@@ -186,11 +210,11 @@ public class AnnonceService {
         List<Voiture> voitures = voitureRepository.findByProprietaireId(proprietaireId);
 
         return voitures.stream()
-            .map(voiture -> {
-                int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-                return AnnonceResponse.fromVoiture(voiture, nbJours);
-            })
-            .collect(Collectors.toList());
+                .map(voiture -> {
+                    int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
+                    return AnnonceResponse.fromVoiture(voiture, nbJours);
+                })
+                .collect(Collectors.toList());
     }
 
     /**
@@ -202,7 +226,7 @@ public class AnnonceService {
     @Transactional(readOnly = true)
     public AnnonceResponse getAnnonceById(Long voitureId) {
         Voiture voiture = voitureRepository.findById(voitureId)
-            .orElseThrow(() -> new RuntimeException("Voiture introuvable avec l'ID: " + voitureId));
+                .orElseThrow(() -> new RuntimeException("Voiture introuvable avec l'ID: " + voitureId));
 
         int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
         return AnnonceResponse.fromVoiture(voiture, nbJours);
@@ -210,6 +234,7 @@ public class AnnonceService {
 
     /**
      * Récupère toutes les annonces (pour la page d'accueil).
+     * Masque les annonces complètement réservées (nbJoursDisponibles == 0).
      *
      * @return Liste de toutes les annonces
      */
@@ -218,13 +243,15 @@ public class AnnonceService {
         List<Voiture> voitures = voitureRepository.findAll();
 
         return voitures.stream()
-            // Afficher uniquement les voitures "disponible" (avec au moins une date future disponible)
-            .filter(v -> "disponible".equalsIgnoreCase(v.getStatut()))
-            .map(voiture -> {
-                int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-                return AnnonceResponse.fromVoiture(voiture, nbJours);
-            })
-            .collect(Collectors.toList());
+                // Afficher uniquement les voitures "disponible" (avec au moins une date future disponible)
+                .filter(v -> "disponible".equalsIgnoreCase(v.getStatut()))
+                .map(voiture -> {
+                    int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
+                    return AnnonceResponse.fromVoiture(voiture, nbJours);
+                })
+                // Masquer les annonces complètement réservées UNIQUEMENT sur l'accueil
+                .filter(response -> response.getNbJoursDisponibles() > 0)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -236,7 +263,7 @@ public class AnnonceService {
     @Transactional
     public void supprimerAnnonce(Long voitureId, Long proprietaireId) {
         Voiture voiture = voitureRepository.findById(voitureId)
-            .orElseThrow(() -> new RuntimeException("Voiture introuvable"));
+                .orElseThrow(() -> new RuntimeException("Voiture introuvable"));
 
         // Vérification que l'utilisateur est bien le propriétaire
         if (!voiture.getProprietaire().getId().equals(proprietaireId)) {
@@ -263,155 +290,155 @@ public class AnnonceService {
         List<Voiture> voitures = voitureRepository.findAll();
 
         return voitures.stream()
-            // Filtrer uniquement les annonces disponibles
-            .filter(v -> "disponible".equalsIgnoreCase(v.getStatut()))
+                // Filtrer uniquement les annonces disponibles
+                .filter(v -> "disponible".equalsIgnoreCase(v.getStatut()))
 
-            // Filtre géographique (rayon autour de la ville sélectionnée)
-            .filter(v -> {
-                if (request.getLatitude() != null && request.getLongitude() != null) {
-                    if (v.getLatitude() == null || v.getLongitude() == null) {
-                        logger.debug("Voiture {} exclue: pas de coordonnées GPS", v.getId());
-                        return false;
+                // Filtre géographique (rayon autour de la ville sélectionnée)
+                .filter(v -> {
+                    if (request.getLatitude() != null && request.getLongitude() != null) {
+                        if (v.getLatitude() == null || v.getLongitude() == null) {
+                            logger.debug("Voiture {} exclue: pas de coordonnées GPS", v.getId());
+                            return false;
+                        }
+                        double distance = calculerDistance(
+                                request.getLatitude(), request.getLongitude(),
+                                v.getLatitude().doubleValue(), v.getLongitude().doubleValue()
+                        );
+                        boolean dansRayon = distance <= request.getRayonKm();
+                        if (!dansRayon) {
+                            logger.debug("Voiture {} exclue: distance {}km > rayon {}km",
+                                    v.getId(), String.format("%.1f", distance), request.getRayonKm());
+                        }
+                        return dansRayon;
                     }
-                    double distance = calculerDistance(
-                        request.getLatitude(), request.getLongitude(),
-                        v.getLatitude().doubleValue(), v.getLongitude().doubleValue()
-                    );
-                    boolean dansRayon = distance <= request.getRayonKm();
-                    if (!dansRayon) {
-                        logger.debug("Voiture {} exclue: distance {}km > rayon {}km",
-                            v.getId(), String.format("%.1f", distance), request.getRayonKm());
+                    return true; // Pas de filtre géographique
+                })
+
+                // Filtre marque (insensible à la casse)
+                .filter(v -> {
+                    if (request.getMarque() == null || request.getMarque().trim().isEmpty()) {
+                        return true;
                     }
-                    return dansRayon;
-                }
-                return true; // Pas de filtre géographique
-            })
+                    return v.getMarque() != null &&
+                            v.getMarque().toLowerCase().contains(request.getMarque().toLowerCase().trim());
+                })
 
-            // Filtre marque (insensible à la casse)
-            .filter(v -> {
-                if (request.getMarque() == null || request.getMarque().trim().isEmpty()) {
-                    return true;
-                }
-                return v.getMarque() != null &&
-                       v.getMarque().toLowerCase().contains(request.getMarque().toLowerCase().trim());
-            })
-
-            // Filtre modèle (insensible à la casse)
-            .filter(v -> {
-                if (request.getModele() == null || request.getModele().trim().isEmpty()) {
-                    return true;
-                }
-                return v.getModele() != null &&
-                       v.getModele().toLowerCase().contains(request.getModele().toLowerCase().trim());
-            })
-
-            // Filtre type de carburant
-            .filter(v -> {
-                if (request.getTypeCarburant() == null || request.getTypeCarburant().trim().isEmpty()) {
-                    return true;
-                }
-                return v.getTypeCarburant() != null &&
-                       v.getTypeCarburant().equalsIgnoreCase(request.getTypeCarburant());
-            })
-
-            // Filtre boîte de vitesse
-            .filter(v -> {
-                if (request.getBoiteVitesse() == null || request.getBoiteVitesse().trim().isEmpty()) {
-                    return true;
-                }
-                return v.getBoiteVitesse() != null &&
-                       v.getBoiteVitesse().name().equalsIgnoreCase(request.getBoiteVitesse());
-            })
-
-            // Filtre nombre de places
-            .filter(v -> {
-                if (request.getNbPlaces() == null) {
-                    return true;
-                }
-                return v.getNbPlaces() != null && v.getNbPlaces().equals(request.getNbPlaces());
-            })
-
-            // Filtre prix minimum
-            .filter(v -> {
-                if (request.getPrixMin() == null) {
-                    return true;
-                }
-                return v.getPrixParJour() != null &&
-                       v.getPrixParJour().doubleValue() >= request.getPrixMin();
-            })
-
-            // Filtre prix maximum
-            .filter(v -> {
-                if (request.getPrixMax() == null) {
-                    return true;
-                }
-                return v.getPrixParJour() != null &&
-                       v.getPrixParJour().doubleValue() <= request.getPrixMax();
-            })
-
-            // Filtre année minimum
-            .filter(v -> {
-                if (request.getAnneeMin() == null) {
-                    return true;
-                }
-                return v.getAnnee() != null && v.getAnnee() >= request.getAnneeMin();
-            })
-
-            // Filtre année maximum
-            .filter(v -> {
-                if (request.getAnneeMax() == null) {
-                    return true;
-                }
-                return v.getAnnee() != null && v.getAnnee() <= request.getAnneeMax();
-            })
-
-            // Filtre climatisation
-            .filter(v -> {
-                if (request.getClimatisation() == null) {
-                    return true;
-                }
-                return v.getClimatisation() != null &&
-                       v.getClimatisation().equals(request.getClimatisation());
-            })
-
-            // Filtre disponibilité (si dates fournies)
-            .filter(v -> {
-                if (request.getDateDebut() != null && request.getDateFin() != null) {
-                    boolean disponible = verifierDisponibilite(v.getId(), request.getDateDebut(), request.getDateFin());
-                    if (!disponible) {
-                        logger.debug("Voiture {} exclue: non disponible pour la période demandée", v.getId());
+                // Filtre modèle (insensible à la casse)
+                .filter(v -> {
+                    if (request.getModele() == null || request.getModele().trim().isEmpty()) {
+                        return true;
                     }
-                    return disponible;
-                }
-                return true; // Pas de filtre de dates
-            })
+                    return v.getModele() != null &&
+                            v.getModele().toLowerCase().contains(request.getModele().toLowerCase().trim());
+                })
 
-            // Transformer en AnnonceResponse et ajouter la distance + nb avis
-            .map(voiture -> {
-                int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-                AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+                // Filtre type de carburant
+                .filter(v -> {
+                    if (request.getTypeCarburant() == null || request.getTypeCarburant().trim().isEmpty()) {
+                        return true;
+                    }
+                    return v.getTypeCarburant() != null &&
+                            v.getTypeCarburant().equalsIgnoreCase(request.getTypeCarburant());
+                })
 
-                // Calculer et ajouter la distance si géolocalisation activée
-                if (request.getLatitude() != null && request.getLongitude() != null
-                    && voiture.getLatitude() != null && voiture.getLongitude() != null) {
-                    double distance = calculerDistance(
-                        request.getLatitude(), request.getLongitude(),
-                        voiture.getLatitude().doubleValue(), voiture.getLongitude().doubleValue()
-                    );
-                    response.setDistanceKm(distance);
-                }
+                // Filtre boîte de vitesse
+                .filter(v -> {
+                    if (request.getBoiteVitesse() == null || request.getBoiteVitesse().trim().isEmpty()) {
+                        return true;
+                    }
+                    return v.getBoiteVitesse() != null &&
+                            v.getBoiteVitesse().name().equalsIgnoreCase(request.getBoiteVitesse());
+                })
 
-                // Ajouter le nombre d'avis pour cette voiture
-                long nbAvis = avisRepository.countByCibleId(voiture.getId());
-                response.setNbAvis((int) nbAvis);
+                // Filtre nombre de places
+                .filter(v -> {
+                    if (request.getNbPlaces() == null) {
+                        return true;
+                    }
+                    return v.getNbPlaces() != null && v.getNbPlaces().equals(request.getNbPlaces());
+                })
 
-                return response;
-            })
+                // Filtre prix minimum
+                .filter(v -> {
+                    if (request.getPrixMin() == null) {
+                        return true;
+                    }
+                    return v.getPrixParJour() != null &&
+                            v.getPrixParJour().doubleValue() >= request.getPrixMin();
+                })
 
-            // Appliquer le tri selon l'option choisie
-            .sorted(getComparator(request))
+                // Filtre prix maximum
+                .filter(v -> {
+                    if (request.getPrixMax() == null) {
+                        return true;
+                    }
+                    return v.getPrixParJour() != null &&
+                            v.getPrixParJour().doubleValue() <= request.getPrixMax();
+                })
 
-            .collect(Collectors.toList());
+                // Filtre année minimum
+                .filter(v -> {
+                    if (request.getAnneeMin() == null) {
+                        return true;
+                    }
+                    return v.getAnnee() != null && v.getAnnee() >= request.getAnneeMin();
+                })
+
+                // Filtre année maximum
+                .filter(v -> {
+                    if (request.getAnneeMax() == null) {
+                        return true;
+                    }
+                    return v.getAnnee() != null && v.getAnnee() <= request.getAnneeMax();
+                })
+
+                // Filtre climatisation
+                .filter(v -> {
+                    if (request.getClimatisation() == null) {
+                        return true;
+                    }
+                    return v.getClimatisation() != null &&
+                            v.getClimatisation().equals(request.getClimatisation());
+                })
+
+                // Filtre disponibilité (si dates fournies)
+                .filter(v -> {
+                    if (request.getDateDebut() != null && request.getDateFin() != null) {
+                        boolean disponible = verifierDisponibilite(v.getId(), request.getDateDebut(), request.getDateFin());
+                        if (!disponible) {
+                            logger.debug("Voiture {} exclue: non disponible pour la période demandée", v.getId());
+                        }
+                        return disponible;
+                    }
+                    return true; // Pas de filtre de dates
+                })
+
+                // Transformer en AnnonceResponse et ajouter la distance + nb avis
+                .map(voiture -> {
+                    int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
+                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+
+                    // Calculer et ajouter la distance si géolocalisation activée
+                    if (request.getLatitude() != null && request.getLongitude() != null
+                            && voiture.getLatitude() != null && voiture.getLongitude() != null) {
+                        double distance = calculerDistance(
+                                request.getLatitude(), request.getLongitude(),
+                                voiture.getLatitude().doubleValue(), voiture.getLongitude().doubleValue()
+                        );
+                        response.setDistanceKm(distance);
+                    }
+
+                    // Ajouter le nombre d'avis pour cette voiture
+                    long nbAvis = avisRepository.countByCibleId(voiture.getId());
+                    response.setNbAvis((int) nbAvis);
+
+                    return response;
+                })
+
+                // Appliquer le tri selon l'option choisie
+                .sorted(getComparator(request))
+
+                .collect(Collectors.toList());
     }
 
     /**
@@ -543,8 +570,8 @@ public class AnnonceService {
         while (!current.isAfter(dateFin)) {
             final LocalDate checkDate = current;
             boolean jourDisponible = disponibilites.stream()
-                .anyMatch(d -> d.getJour().equals(checkDate)
-                    && d.getStatut() == Disponibilite.Statut.DISPONIBLE);
+                    .anyMatch(d -> d.getJour().equals(checkDate)
+                            && d.getStatut() == Disponibilite.Statut.DISPONIBLE);
 
             if (!jourDisponible) {
                 return false; // Au moins un jour n'est pas disponible
@@ -715,7 +742,7 @@ public class AnnonceService {
         if (!aDesDatesFutures) {
             if (!"expiree".equalsIgnoreCase(voiture.getStatut())) {
                 logger.info("Mise à jour du statut de la voiture {} : {} → expiree (toutes les dates sont passées)",
-                    voitureId, voiture.getStatut());
+                        voitureId, voiture.getStatut());
                 voiture.setStatut("expiree");
                 voiture.setMajLe(LocalDateTime.now());
                 voitureRepository.save(voiture);
@@ -726,7 +753,7 @@ public class AnnonceService {
         // Vérifier s'il y a des dates DISPONIBLES dans le futur
         boolean aDesDatesFuturesDisponibles = disponibilites.stream()
                 .anyMatch(d -> (d.getJour().isAfter(aujourdhui) || d.getJour().isEqual(aujourdhui))
-                    && d.getStatut() == Disponibilite.Statut.DISPONIBLE);
+                        && d.getStatut() == Disponibilite.Statut.DISPONIBLE);
 
         // Déterminer le nouveau statut
         String nouveauStatut;
@@ -741,7 +768,7 @@ public class AnnonceService {
         // Mettre à jour le statut si nécessaire
         if (!nouveauStatut.equalsIgnoreCase(voiture.getStatut())) {
             logger.info("Mise à jour du statut de la voiture {} : {} → {}",
-                voitureId, voiture.getStatut(), nouveauStatut);
+                    voitureId, voiture.getStatut(), nouveauStatut);
             voiture.setStatut(nouveauStatut);
             voiture.setMajLe(LocalDateTime.now());
             voitureRepository.save(voiture);

@@ -20,6 +20,14 @@ export default function CarCard({ car }) {
         Number.isFinite(reviewCount) &&
         reviewCount > 0;
 
+    // Masquer complètement l'annonce si elle est entièrement réservée (plus de dates disponibles)
+    // Cela s'applique UNIQUEMENT sur la page d'accueil (pas dans "Mes annonces")
+    const isFullyBooked = car?.nbJoursDisponibles === 0;
+
+    if (isFullyBooked) {
+        return null; // Ne pas afficher l'annonce sur l'accueil
+    }
+
     return (
         <Card className="overflow-hidden hover:shadow-lg transition rounded-2xl p-0 cursor-pointer">
             {/* IMAGE (plus grande) */}
@@ -39,7 +47,7 @@ export default function CarCard({ car }) {
                     {title} {subtitle && ` ${subtitle}`}
                 </CardTitle>
 
-                {/* ⚡ NOUVELLE ANNONCE ou AVIS — maintenant juste en dessous du titre */}
+                {/* NOUVELLE ANNONCE ou AVIS */}
                 {hasRating && hasReviews ? (
                     <p className="text-sm font-medium">
                         ⭐ {rating.toFixed(1)}{" "}

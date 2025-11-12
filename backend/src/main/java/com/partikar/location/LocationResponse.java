@@ -16,6 +16,8 @@ public class LocationResponse {
     private Long locataireId;
     private String locataireNom;
     private String locatairePrenom;
+    private Double locataireMoyenneAvis;
+    private Integer locataireNbAvis;
     private Long proprietaireId;
     private String proprietaireNom;
     private String proprietairePrenom;
@@ -86,6 +88,22 @@ public class LocationResponse {
 
     public void setLocatairePrenom(String locatairePrenom) {
         this.locatairePrenom = locatairePrenom;
+    }
+
+    public Double getLocataireMoyenneAvis() {
+        return locataireMoyenneAvis;
+    }
+
+    public void setLocataireMoyenneAvis(Double locataireMoyenneAvis) {
+        this.locataireMoyenneAvis = locataireMoyenneAvis;
+    }
+
+    public Integer getLocataireNbAvis() {
+        return locataireNbAvis;
+    }
+
+    public void setLocataireNbAvis(Integer locataireNbAvis) {
+        this.locataireNbAvis = locataireNbAvis;
     }
 
     public Long getProprietaireId() {

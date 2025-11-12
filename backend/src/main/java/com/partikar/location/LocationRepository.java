@@ -11,5 +11,6 @@ public interface LocationRepository extends JpaRepository<Location, Long> {
     List<Location> findByVoitureId(Long voitureId);
     List<Location> findByVoitureProprietaireId(Long proprietaireId);
     List<Location> findByStatut(String statut);
+    List<Location> findByVoitureIdAndLocataireIdAndStatut(Long voitureId, Long locataireId, String statut);
 }
 

@@ -36,6 +36,7 @@ public class AnnonceResponse {
     private Double distanceKm; // Distance par rapport au point de recherche (en km)
     private Integer nbAvis; // Nombre d'avis pour cette voiture
     private Integer kilometrage; // nouveau
+    private Boolean hasPendingRequest; // Indique si l'utilisateur connecté a une demande en attente pour cette voiture
 
     /**
      * Constructeur à partir d'une entité Voiture
@@ -143,4 +144,7 @@ public class AnnonceResponse {
 
     public Integer getKilometrage() { return kilometrage; }
     public void setKilometrage(Integer kilometrage) { this.kilometrage = kilometrage; }
+
+    public Boolean getHasPendingRequest() { return hasPendingRequest; }
+    public void setHasPendingRequest(Boolean hasPendingRequest) { this.hasPendingRequest = hasPendingRequest; }
 }

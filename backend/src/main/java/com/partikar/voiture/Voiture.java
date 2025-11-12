@@ -37,7 +37,7 @@ public class Voiture {
     @Column(nullable = true)
     private String couleur;
 
-    @Column(nullable = false, unique = true) // L'immatriculation doit être unique
+    @Column(nullable = false) // Suppression de unique=true pour gérer la validation en Java
     private String immatriculation;
 
     // Correspond à la colonne SQL `type_carburant` (nom attendu par la base)

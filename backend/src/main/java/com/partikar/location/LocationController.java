@@ -70,6 +70,21 @@ public class LocationController {
     }
 
     /**
+     * Récupère toutes les demandes de réservation du locataire authentifié.
+     * GET /api/locations/mes-demandes
+     */
+    @GetMapping("/mes-demandes")
+    public ResponseEntity<?> getMesDemandesReservation() {
+        try {
+            List<LocationResponse> demandes = locationService.getMesDemandesReservation();
+            return ResponseEntity.ok(demandes);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
      * Récupère toutes les locations d'un propriétaire.
      * GET /api/locations/proprietaire/1
      */
@@ -133,6 +148,20 @@ public class LocationController {
     public ResponseEntity<?> annulerReservation(@PathVariable Long locationId) {
         try {
             locationService.annulerReservationProprietaire(locationId);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * Annule une demande de réservation (utilisé par le locataire).
+     * POST /api/locations/1/annuler-locataire
+     */
+    @PostMapping("/{locationId}/annuler-locataire")
+    public ResponseEntity<?> annulerDemandeLocataire(@PathVariable Long locationId) {
+        try {
+            locationService.annulerDemandeLocataire(locationId);
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
