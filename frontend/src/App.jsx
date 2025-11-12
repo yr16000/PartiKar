@@ -8,7 +8,8 @@ import Publish from "./pages/Publish";
 import Profile from "./pages/Profile";
 import AnnonceDetails from "./pages/AnnonceDetails";
 import Search from "./pages/Search";
-import MyAnnonces from "./pages/MyAnnonces"; // nouvelle page
+import MyAnnonces from "./pages/MyAnnonces";
+import DemandesReservation from "./pages/DemandesReservation";
 
 
 function ScrollManager() {
@@ -58,6 +59,7 @@ export default function App() {
 
                 <Route path="/my-annonces" element={<MyAnnonces />} />
 
+                <Route path="/demandes-reservation" element={<DemandesReservation />} />
 
             </Routes>
         </>

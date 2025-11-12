@@ -54,6 +54,22 @@ public class LocationController {
     }
 
     /**
+     * Récupère les demandes de réservation en attente pour un propriétaire.
+     * GET /api/locations/proprietaire/en-attente
+     * IMPORTANT: Doit être AVANT /proprietaire/{proprietaireId} pour éviter les conflits
+     */
+    @GetMapping("/proprietaire/en-attente")
+    public ResponseEntity<?> getDemandesEnAttente() {
+        try {
+            List<LocationResponse> demandes = locationService.getDemandesEnAttenteProprietaire();
+            return ResponseEntity.ok(demandes);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
      * Récupère toutes les locations d'un propriétaire.
      * GET /api/locations/proprietaire/1
      */
@@ -89,6 +105,35 @@ public class LocationController {
         try {
             locationService.annulerLocation(locationId, userId);
             return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+
+    /**
+     * Valide (accepte) une demande de réservation.
+     * POST /api/locations/1/valider
+     */
+    @PostMapping("/{locationId}/valider")
+    public ResponseEntity<?> validerReservation(@PathVariable Long locationId) {
+        try {
+            locationService.validerReservation(locationId);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * Annule une réservation (utilisé pour refuser une demande).
+     * POST /api/locations/1/annuler
+     */
+    @PostMapping("/{locationId}/annuler")
+    public ResponseEntity<?> annulerReservation(@PathVariable Long locationId) {
+        try {
+            locationService.annulerReservationProprietaire(locationId);
+            return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
         }
