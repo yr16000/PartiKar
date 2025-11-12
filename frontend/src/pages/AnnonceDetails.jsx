@@ -5,15 +5,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import Header from "@/components/layout/header.jsx";
 import Footer from "@/components/layout/footer.jsx";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { Calendar as CalIcon, MapPin, Pencil, X, Save } from "lucide-react";
-import { fr } from "date-fns/locale";
+import { MapPin, Pencil, X, Save } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CARBURANTS, BOITES } from "@/constants/vehicleData";
+
+// ️ DateRangePicker sans heure (déjà existant)
+import DateRangePicker from "@/components/ui/DateRangePicker";
 
 const FALLBACK =
     "https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=1600&auto=format&fit=crop";
@@ -38,36 +37,25 @@ export default function AnnonceDetails() {
     const navigate = useNavigate();
     const { token } = useAuth();
 
-    // États pour la réservation
+    // États réservation
     const [reserving, setReserving] = useState(false);
     const [reservationError, setReservationError] = useState("");
     const [reservationSuccess, setReservationSuccess] = useState(false);
 
-    // ---- DATEPICKER (même logique que Hero) ----
+    // ---- DATE RANGE (sans heure) ----
     const today = useMemo(() => {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
         return d;
     }, []);
-    const [months, setMonths] = useState(1);
-    useEffect(() => {
-        const mql = window.matchMedia("(min-width: 640px)");
-        const handler = () => setMonths(mql.matches ? 2 : 1);
-        handler();
-        mql.addEventListener?.("change", handler);
-        return () => mql.removeEventListener?.("change", handler);
-    }, []);
-
     const [range, setRange] = useState({ from: today, to: today });
-    const [hour, setHour] = useState("10:00");
-    const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
 
-    const formatRangeWithHour = (r, h) => {
+    const formatRange = (r) => {
         if (!r?.from) return "Sélectionner les dates";
         const opt = { day: "2-digit", month: "short" };
         const f = r.from.toLocaleDateString("fr-FR", opt);
         const t = (r.to ?? r.from).toLocaleDateString("fr-FR", opt);
-        return `${f} ${h} → ${t} ${h}`;
+        return `${f} → ${t}`;
     };
 
     // ---- DATA ----
@@ -75,8 +63,8 @@ export default function AnnonceDetails() {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState("");
 
-    // jours indisponibles (grisés)
-    const [unavailable, setUnavailable] = useState(new Set());
+    // Jours DISPONIBLES (whitelist). Tout le reste est grisé.
+    const [available, setAvailable] = useState(new Set());
 
     // prix total
     const total = (() => {
@@ -85,16 +73,13 @@ export default function AnnonceDetails() {
         return price * days;
     })();
 
-    // Fonction pour gérer la réservation
     const handleReservation = async () => {
-        // Vérifier si l'utilisateur est connecté (on vérifie le token)
         if (!token) {
             setReservationError("Vous devez être connecté pour réserver une voiture");
             navigate("/login", { state: { from: `/annonce/${id}` } });
             return;
         }
 
-        // Réinitialiser les messages
         setReservationError("");
         setReservationSuccess(false);
         setReserving(true);
@@ -104,15 +89,13 @@ export default function AnnonceDetails() {
                 voitureId: Number(id),
                 dateDebut: toYMD(range.from),
                 dateFin: toYMD(range.to ?? range.from),
-                heureDebut: hour,
-                heureFin: hour,
             };
 
             const response = await fetch("http://localhost:8080/api/locations", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(payload),
             });
@@ -122,16 +105,12 @@ export default function AnnonceDetails() {
                 throw new Error(error.message || "Erreur lors de la réservation");
             }
 
-            const locationData = await response.json();
-
-            // Succès !
+            await response.json();
             setReservationSuccess(true);
 
-            // Rediriger vers une page de confirmation après 2 secondes
             setTimeout(() => {
                 navigate("/profile", { state: { tab: "reservations" } });
             }, 2000);
-
         } catch (error) {
             console.error("Erreur réservation:", error);
             setReservationError(error.message || "Une erreur est survenue lors de la réservation");
@@ -140,7 +119,7 @@ export default function AnnonceDetails() {
         }
     };
 
-    // État pour le mode propriétaire
+    // État propriétaire / édition
     const [isOwner, setIsOwner] = useState(false);
     const [ownerLoaded, setOwnerLoaded] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -167,8 +146,6 @@ export default function AnnonceDetails() {
             boiteVitesse: data.boiteVitesse || "",
             climatisation: typeof data.climatisation === "boolean" ? data.climatisation : false,
             localisation: data.localisation || "",
-            latitude: data.latitude || "",
-            longitude: data.longitude || "",
             kilometrage: data.kilometrage || "",
         });
         setEditing(true);
@@ -184,7 +161,7 @@ export default function AnnonceDetails() {
 
     function onFieldChange(e) {
         const { name, value, type, checked } = e.target;
-        setEditForm(f => ({ ...f, [name]: type === "checkbox" ? checked : value }));
+        setEditForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
     }
 
     async function handleSave() {
@@ -196,22 +173,20 @@ export default function AnnonceDetails() {
         setSaveError("");
         setSaveSuccess(false);
         try {
-            // Construire payload diff: seulement les champs modifiés et non vides
             const payload = {};
-            Object.keys(editForm).forEach(k => {
+            Object.keys(editForm).forEach((k) => {
                 const newVal = editForm[k];
                 const oldVal = originalData?.[k];
-                // normaliser nombres
                 if (["annee", "nbPlaces", "kilometrage"].includes(k)) {
-                    if (newVal === "" || newVal === null) return; // ignorer vide
+                    if (newVal === "" || newVal === null) return;
                     const num = Number(newVal);
-                    if (!Number.isFinite(num)) return; // ignorer invalide
-                    if (oldVal !== num) payload[k] = num; else return;
+                    if (!Number.isFinite(num)) return;
+                    if (oldVal !== num) payload[k] = num;
                 } else if (k === "prixParJour") {
                     if (newVal === "" || newVal === null) return;
                     const num = Number(newVal);
                     if (!Number.isFinite(num)) return;
-                    if (Number(oldVal) !== num) payload[k] = num; else return;
+                    if (Number(oldVal) !== num) payload[k] = num;
                 } else if (k === "climatisation") {
                     if (oldVal !== newVal) payload[k] = newVal;
                 } else {
@@ -229,17 +204,19 @@ export default function AnnonceDetails() {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(payload),
             });
             if (!res.ok) {
                 let msg = "Erreur sauvegarde";
-                try { const j = await res.json(); msg = j.message || msg; } catch {}
+                try {
+                    const j = await res.json();
+                    msg = j.message || msg;
+                } catch {}
                 throw new Error(msg);
             }
             const updated = await res.json();
-            // Mettre à jour data + originalData
             const merged = {
                 ...data,
                 ...updated,
@@ -256,8 +233,6 @@ export default function AnnonceDetails() {
                 boiteVitesse: updated.boiteVitesse,
                 climatisation: updated.climatisation,
                 localisation: updated.localisation,
-                latitude: updated.latitude,
-                longitude: updated.longitude,
                 kilometrage: updated.kilometrage,
             };
             setData(merged);
@@ -303,7 +278,6 @@ export default function AnnonceDetails() {
                 setData(norm);
                 setOriginalData(norm);
 
-                // Déterminer si propriétaire (fetch /api/users/me si token)
                 if (token) {
                     try {
                         const meRes = await fetch("/api/users/me", { headers: { Authorization: `Bearer ${token}` } });
@@ -317,7 +291,7 @@ export default function AnnonceDetails() {
                 }
                 setOwnerLoaded(true);
 
-                // On n'a plus besoin des disponibilités si propriétaire (pas de réservation)
+                // Charger les disponibilités (tous les autres jours seront grisés)
                 if (!isOwner) {
                     const tryEndpoints = [
                         `/api/annonces/id/${id}/disponibilites`,
@@ -336,13 +310,14 @@ export default function AnnonceDetails() {
                         } catch {}
                     }
                     if (!alive) return;
-                    const blocked = new Set(
-                        days.filter(d => {
-                            const s = (d.statut || d.status || "").toUpperCase();
-                            return s && s !== "DISPONIBLE";
-                        }).map(d => String(d.jour || d.date || d.day || ""))
+
+                    // ⬇️ On conserve UNIQUEMENT les dates avec statut DISPONIBLE (format 'YYYY-MM-DD')
+                    const availableSet = new Set(
+                        days
+                            .filter((d) => String((d.statut || d.status || "")).toUpperCase() === "DISPONIBLE")
+                            .map((d) => String(d.jour || d.date || d.day || "").slice(0, 10))
                     );
-                    setUnavailable(blocked);
+                    setAvailable(availableSet);
                 }
             } catch (e) {
                 if (!alive) return;
@@ -351,8 +326,10 @@ export default function AnnonceDetails() {
                 if (alive) setLoading(false);
             }
         })();
-        return () => { alive = false; };
-    }, [id, token]);
+        return () => {
+            alive = false;
+        };
+    }, [id, token, isOwner]);
 
     if (loading) {
         return (
@@ -378,14 +355,25 @@ export default function AnnonceDetails() {
     }
 
     const title = `${data.marque ?? ""} ${data.modele ?? ""} ${data.annee ?? ""}`.trim();
-    const published = data.creeLe && new Date(data.creeLe).toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "2-digit" });
+    const published =
+        data.creeLe &&
+        new Date(data.creeLe).toLocaleDateString("fr-FR", {
+            year: "numeric",
+            month: "long",
+            day: "2-digit",
+        });
 
     return (
         <>
             <Header />
             <div className="mx-auto max-w-6xl px-4 py-8 md:py-10 space-y-8">
                 <div className="aspect-[16/9] w-full overflow-hidden rounded-xl bg-muted">
-                    <img src={data.imageUrl || FALLBACK} alt={title || "Annonce"} className="h-full w-full object-cover" onError={(e) => (e.currentTarget.src = FALLBACK)} />
+                    <img
+                        src={data.imageUrl || FALLBACK}
+                        alt={title || "Annonce"}
+                        className="h-full w-full object-cover"
+                        onError={(e) => (e.currentTarget.src = FALLBACK)}
+                    />
                 </div>
                 <header className="space-y-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -421,16 +409,16 @@ export default function AnnonceDetails() {
                             <Input name="annee" value={editForm.annee} onChange={onFieldChange} placeholder="Année" />
                             <Input name="couleur" value={editForm.couleur} onChange={onFieldChange} placeholder="Couleur" />
                             <Input name="immatriculation" value={editForm.immatriculation} onChange={onFieldChange} placeholder="Immatriculation" />
-                            <Select value={editForm.typeCarburant} onValueChange={(v)=>setEditForm(f=>({...f,typeCarburant:v}))}>
+                            <Select value={editForm.typeCarburant} onValueChange={(v) => setEditForm((f) => ({ ...f, typeCarburant: v }))}>
                                 <SelectTrigger><SelectValue placeholder="Carburant" /></SelectTrigger>
-                                <SelectContent>{CARBURANTS.map(c=> <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                                <SelectContent>{CARBURANTS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                             </Select>
                             <Input name="nbPlaces" value={editForm.nbPlaces} onChange={onFieldChange} placeholder="Places" />
                             <Input name="kilometrage" value={editForm.kilometrage} onChange={onFieldChange} placeholder="Kilométrage" />
                             <Input name="prixParJour" value={editForm.prixParJour} onChange={onFieldChange} placeholder="Prix par jour (€)" />
-                            <Select value={editForm.boiteVitesse} onValueChange={(v)=>setEditForm(f=>({...f,boiteVitesse:v}))}>
+                            <Select value={editForm.boiteVitesse} onValueChange={(v) => setEditForm((f) => ({ ...f, boiteVitesse: v }))}>
                                 <SelectTrigger><SelectValue placeholder="Boîte" /></SelectTrigger>
-                                <SelectContent>{BOITES.map(b=> <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+                                <SelectContent>{BOITES.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
                             </Select>
                             <div className="flex items-center gap-2">
                                 <input type="checkbox" id="clim" name="climatisation" checked={!!editForm.climatisation} onChange={onFieldChange} />
@@ -438,14 +426,11 @@ export default function AnnonceDetails() {
                             </div>
                             <Input name="imageUrl" value={editForm.imageUrl} onChange={onFieldChange} placeholder="Image URL" />
                             <Input name="localisation" value={editForm.localisation} onChange={onFieldChange} placeholder="Localisation" />
-                            <Input name="latitude" value={editForm.latitude} onChange={onFieldChange} placeholder="Latitude" />
-                            <Input name="longitude" value={editForm.longitude} onChange={onFieldChange} placeholder="Longitude" />
                             <Textarea name="description" value={editForm.description} onChange={onFieldChange} placeholder="Description" className="md:col-span-2" />
                         </div>
                     </div>
                 )}
 
-                {/* SECTION INFOS DETAILLEES */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                     <div className={isOwner ? "lg:col-span-3" : "lg:col-span-2"}>
                         <section className="rounded-xl border bg-white p-5 space-y-5">
@@ -462,11 +447,7 @@ export default function AnnonceDetails() {
                                 <Info label="Climatisation" value={typeof data.climatisation === "boolean" ? (data.climatisation ? "Oui" : "Non") : null} />
                                 <Info label="Prix / jour" value={typeof data.prixParJour === "number" ? `${data.prixParJour}€` : data.prixParJour} />
                                 <Info label="Localisation" value={data.localisation} />
-                                <Info label="Latitude" value={data.latitude} />
-                                <Info label="Longitude" value={data.longitude} />
                                 <Info label="Kilométrage" value={data.kilometrage} />
-                                <Info label="Statut" value={data.statut} />
-                                <Info label="Créée le" value={published} />
                             </div>
                             <div>
                                 <h3 className="text-md font-semibold mb-2">Description</h3>
@@ -490,59 +471,22 @@ export default function AnnonceDetails() {
                                         {diffDaysInclusive(range.from, range.to ?? range.from)} jour(s)
                                     </div>
                                 </div>
-                                {/* Dates */}
+
+                                {/* Dates — DateRangePicker avec whitelist des jours DISPONIBLES */}
                                 <div className="space-y-4">
                                     <div className="flex flex-col text-left min-w-0">
                                         <span className="text-sm text-gray-600 mb-1 leading-none">Votre voyage</span>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <button
-                                                    type="button"
-                                                    className="h-12 w-full rounded-lg border border-gray-300 px-4 text-base leading-none text-left flex items-center justify-between gap-3 bg-white shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-0 overflow-hidden"
-                                                >
-                                                    <span className="truncate">{formatRangeWithHour(range, hour)}</span>
-                                                    <span className="inline-flex w-7 h-7 items-center justify-center rounded bg-gray-100 shrink-0">
-                                                        <CalIcon className="w-4 h-4 text-gray-700" />
-                                                    </span>
-                                                </button>
-                                            </PopoverTrigger>
-                                            <PopoverContent side="bottom" align="start" sideOffset={12} avoidCollisions={false} className="z-[400] w-[min(92vw,360px)] sm:w-auto rounded-xl border border-gray-200 bg-white p-3 shadow-2xl">
-                                                <Calendar
-                                                    mode="range"
-                                                    numberOfMonths={months}
-                                                    locale={fr}
-                                                    selected={range}
-                                                    onSelect={(r) => {
-                                                        const from = r?.from ?? today;
-                                                        const to = r?.to ?? r?.from ?? from;
-                                                        setRange({ from, to });
-                                                    }}
-                                                    defaultMonth={range?.from}
-                                                    disabled={[
-                                                        (d) => d < today,
-                                                        (d) => unavailable.size > 0 && unavailable.has(toYMD(d)),
-                                                        { outside: true },
-                                                    ]}
-                                                    showOutsideDays={false}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+
+                                        <DateRangePicker
+                                            value={range}
+                                            onChange={setRange}
+                                            minDate={today}
+                                            // ⬇️ Tout griser par défaut : on désactive les jours qui NE sont PAS dans `available`
+                                            disabledDays={(d) => d < today || (available.size > 0 && !available.has(toYMD(d)))}
+                                            formatLabel={formatRange}
+                                        />
                                     </div>
-                                    {/* Heure */}
-                                    <div className="flex flex-col text-left min-w-0">
-                                        <span className="text-sm text-gray-600 mb-1 leading-none">Heure</span>
-                                        <Select value={hour} onValueChange={setHour}>
-                                            <SelectTrigger className="!h-12 w-full !text-base border border-gray-300 rounded-lg shadow-sm bg-white flex items-center justify-between box-border !px-4 !py-0 leading-none pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                                <SelectValue placeholder="10:00" />
-                                            </SelectTrigger>
-                                            <SelectContent position="popper" side="bottom" align="start" sideOffset={8} avoidCollisions={false} className="bg-white border border-gray-200 shadow-xl rounded-lg z-[401]">
-                                                {hours.map((h) => (
-                                                    <SelectItem key={h} value={h} className="cursor-pointer">{h}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+
                                     <div className="rounded-lg border bg-white px-4 py-3 text-sm">
                                         <div className="text-gray-600 mb-1">Lieu de prise en charge et de retour</div>
                                         <div className="font-medium inline-flex items-center gap-1">
@@ -550,12 +494,18 @@ export default function AnnonceDetails() {
                                             {data.localisation || "—"}
                                         </div>
                                     </div>
+
                                     {reservationError && (
-                                        <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">{reservationError}</div>
+                                        <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+                                            {reservationError}
+                                        </div>
                                     )}
                                     {reservationSuccess && (
-                                        <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">✅ Réservation confirmée ! Redirection...</div>
+                                        <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
+                                            ✅ Réservation confirmée ! Redirection...
+                                        </div>
                                     )}
+
                                     <Button className="w-full h-12" onClick={handleReservation} disabled={reserving || reservationSuccess}>
                                         {reserving ? "Réservation en cours..." : reservationSuccess ? "✓ Réservé" : "Réserver"}
                                     </Button>
@@ -574,7 +524,9 @@ function Info({ label, value }) {
     return (
         <div className="flex flex-col gap-1 p-3 rounded-lg border bg-white">
             <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
-            <span className="text-sm font-medium break-words">{value !== undefined && value !== null && value !== "" ? value : "—"}</span>
+            <span className="text-sm font-medium break-words">
+        {value !== undefined && value !== null && value !== "" ? value : "—"}
+      </span>
         </div>
     );
 }

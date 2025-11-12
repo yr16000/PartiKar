@@ -1,163 +1,159 @@
-import React, { useState, useRef, useEffect } from "react"
+// src/components/ui/DateRangePicker.jsx
+import React, { useEffect, useMemo, useState } from "react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import { Calendar as CalIcon } from "lucide-react";
+import { fr } from "date-fns/locale";
 
-function formatDate(d) {
-    if (!d) return ""
-    return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
+function stripTime(d) {
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    return x;
+}
+function toYMD(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+}
+function formatRangeLabel(range, placeholder = "Sélectionner une période") {
+    const { from, to } = range || {};
+    if (!from) return placeholder;
+    const opts = { day: "2-digit", month: "short", year: "numeric" };
+    const f = from.toLocaleDateString("fr-FR", opts);
+    const t = (to ?? from).toLocaleDateString("fr-FR", opts);
+    return `${f} → ${t}`;
 }
 
-function startOfMonth(date) {
-    return new Date(date.getFullYear(), date.getMonth(), 1)
-}
+/**
+ * DateRangePicker – SANS heure, réutilisable.
+ *
+ * Props:
+ * - value: { from: Date|null, to: Date|null }
+ * - onChange: (range) => void
+ * - placeholder?: string
+ * - minDate?: Date
+ * - maxDate?: Date
+ * - disabledDays?: array|fn compatible react-day-picker
+ * - months?: number (si non fourni: 1 sur mobile, 2 en ≥640px)
+ * - side/align/sideOffset/avoidCollisions?: Popover options
+ * - buttonClassName?: string, contentClassName?: string
+ *
+ * - NEW:
+ *   - lockToAvailable?: boolean  -> si true, tout est grisé SAUF les "availableDaysYMD"
+ *   - availableDaysYMD?: string[] (YYYY-MM-DD) -> jours explicitement disponibles
+ */
+export default function DateRangePicker({
+                                            value,
+                                            onChange,
+                                            placeholder = "Sélectionner une période",
+                                            minDate,
+                                            maxDate,
+                                            disabledDays = [],
+                                            months,
+                                            side = "bottom",
+                                            align = "start",
+                                            sideOffset = 12,
+                                            avoidCollisions = false,
+                                            buttonClassName = "",
+                                            contentClassName = "",
+                                            // 👇 nouveaux props
+                                            lockToAvailable = false,
+                                            availableDaysYMD = [],
+                                        }) {
+    const [open, setOpen] = useState(false);
 
-function addMonths(date, n) {
-    return new Date(date.getFullYear(), date.getMonth() + n, 1)
-}
-
-export default function DateRangePicker({ value = { start: null, end: null }, onChange }) {
-    const [start, setStart] = useState(value.start)
-    const [end, setEnd] = useState(value.end)
-    const [open, setOpen] = useState(false)
-    const [month, setMonth] = useState(startOfMonth(start || new Date()))
-    const ref = useRef(null)
-
+    // Responsive nombre de mois (1 mobile / 2 desktop) si months non fourni
+    const monthsCount = (() => {
+        if (typeof months === "number") return months;
+        if (typeof window === "undefined") return 1;
+        return window.matchMedia("(min-width: 640px)").matches ? 2 : 1;
+    })();
+    const [mCount, setMCount] = useState(monthsCount);
     useEffect(() => {
-        function onDoc(e) {
-            if (!ref.current?.contains(e.target)) setOpen(false)
-        }
-        document.addEventListener("mousedown", onDoc)
-        return () => document.removeEventListener("mousedown", onDoc)
-    }, [])
+        if (typeof months === "number") return;
+        const mql = window.matchMedia("(min-width: 640px)");
+        const handler = () => setMCount(mql.matches ? 2 : 1);
+        handler();
+        mql.addEventListener?.("change", handler);
+        return () => mql.removeEventListener?.("change", handler);
+    }, [months]);
 
-    useEffect(() => {
-        if (onChange) onChange({ start, end })
-    }, [start, end])
+    const availSet = useMemo(() => new Set((availableDaysYMD || []).map(String)), [availableDaysYMD]);
 
-    function handleDayClick(day) {
-        // normalize time portion
-        const clicked = new Date(day.getFullYear(), day.getMonth(), day.getDate())
-        if (!start || (start && end)) {
-            setStart(clicked)
-            setEnd(null)
-        } else {
-            if (clicked < start) {
-                setEnd(start)
-                setStart(clicked)
-            } else {
-                setEnd(clicked)
-            }
-        }
-    }
+    const baseDisabled = useMemo(() => {
+        const arr = [{ outside: true }];
+        if (minDate) arr.unshift((d) => d < stripTime(minDate));
+        if (maxDate) arr.unshift((d) => d > stripTime(maxDate));
+        return arr;
+    }, [minDate, maxDate]);
 
-    function generateCalendar(monthDate) {
-        // Monday as first day of week
-        const first = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1)
-        const firstDayIndex = (first.getDay() + 6) % 7 // 0..6 where 0 = Monday
-        const days = []
-        // 6 weeks grid = 42 cells
-        const startDate = new Date(first)
-        startDate.setDate(first.getDate() - firstDayIndex)
-        for (let i = 0; i < 42; i++) {
-            const d = new Date(startDate)
-            d.setDate(startDate.getDate() + i)
-            days.push(d)
-        }
-        return days
-    }
+    // 🔒 Si lockToAvailable=true -> on désactive TOUT ce qui n’est PAS dans availableDaysYMD
+    const lockPredicate = useMemo(() => {
+        if (!lockToAvailable) return null;
+        return (d) => !availSet.has(toYMD(stripTime(d)));
+    }, [lockToAvailable, availSet]);
 
-    function inRange(d) {
-        if (!start) return false
-        if (start && !end) return d.getTime() === start.getTime()
-        return d >= start && d <= end
-    }
+    const finalDisabled = useMemo(() => {
+        const extra = Array.isArray(disabledDays) ? disabledDays : [disabledDays].filter(Boolean);
+        return lockPredicate ? [...baseDisabled, lockPredicate, ...extra] : [...baseDisabled, ...extra];
+    }, [baseDisabled, disabledDays, lockPredicate]);
+
+    const label = formatRangeLabel(value || {}, placeholder);
 
     return (
-        <div className="relative inline-block" ref={ref}>
-            <button
-                type="button"
-                onClick={() => setOpen((v) => !v)}
-                className="w-44 text-left border border-gray-200 rounded-md px-4 py-2 bg-white flex items-center justify-between"
-                aria-expanded={open}
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    className={`w-full justify-between h-11 ${!value?.from ? "text-muted-foreground" : ""} ${buttonClassName}`}
+                >
+                    <span className="truncate">{label}</span>
+                    <CalIcon className="ml-2 h-4 w-4 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+
+            <PopoverContent
+                side={side}
+                align={align}
+                sideOffset={sideOffset}
+                avoidCollisions={avoidCollisions}
+                className={`z-[400] w-[min(92vw,360px)] sm:w-auto rounded-xl border border-gray-200 bg-white p-3 shadow-2xl ${contentClassName}`}
             >
-        <span className="text-sm text-gray-700">
-          {start ? formatDate(start) : "Début"} — {end ? formatDate(end) : "Fin"}
-        </span>
-                <span className="text-xs text-gray-500">▾</span>
-            </button>
-
-            {open && (
-                <div className="absolute z-50 mt-2 bg-white rounded-lg shadow-lg p-4 w-[320px]">
-                    <div className="flex items-center justify-between mb-3">
-                        <button
-                            type="button"
-                            onClick={() => setMonth((m) => addMonths(m, -1))}
-                            className="px-2 py-1 rounded hover:bg-gray-100"
-                        >
-                            ‹
-                        </button>
-                        <div className="font-medium">
-                            {month.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setMonth((m) => addMonths(m, 1))}
-                            className="px-2 py-1 rounded hover:bg-gray-100"
-                        >
-                            ›
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">
-                        {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((d) => (
-                            <div key={d} className="py-1">{d}</div>
-                        ))}
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1 text-sm">
-                        {generateCalendar(month).map((d) => {
-                            const isCurrentMonth = d.getMonth() === month.getMonth()
-                            const isToday = new Date().toDateString() === d.toDateString()
-                            const selected = inRange(d)
-                            const isStart = start && d.getTime() === start.getTime()
-                            const isEnd = end && d.getTime() === end.getTime()
-                            return (
-                                <button
-                                    key={d.toISOString()}
-                                    type="button"
-                                    onClick={() => handleDayClick(d)}
-                                    className={
-                                        [
-                                            "py-2 rounded",
-                                            isCurrentMonth ? "text-gray-800" : "text-gray-300",
-                                            selected ? "bg-primary/20" : "bg-transparent",
-                                            isStart || isEnd ? "bg-primary text-white" : "",
-                                            isToday && !selected ? "ring-1 ring-gray-200" : ""
-                                        ].join(" ")
-                                    }
-                                >
-                                    <div className="text-center text-sm">{d.getDate()}</div>
-                                </button>
-                            )
-                        })}
-                    </div>
-
-                    <div className="flex items-center justify-between mt-3">
-                        <button
-                            type="button"
-                            onClick={() => { setStart(null); setEnd(null); }}
-                            className="text-sm text-gray-600 hover:underline"
-                        >
-                            Réinitialiser
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setOpen(false)}
-                            className="bg-primary text-white px-3 py-1 rounded"
-                        >
-                            Fermer
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
-    )
+                <Calendar
+                    mode="range"
+                    numberOfMonths={typeof months === "number" ? months : mCount}
+                    locale={fr}
+                    selected={value}
+                    onSelect={(r) => {
+                        const from = r?.from ? stripTime(r.from) : null;
+                        const to = r?.to ? stripTime(r.to) : r?.from ? stripTime(r.from) : null;
+                        onChange?.({ from, to });
+                    }}
+                    defaultMonth={value?.from ?? stripTime(new Date())}
+                    disabled={finalDisabled}
+                    showOutsideDays={false}
+                    initialFocus
+                    className="
+            w-full
+            [&_.rdp-months]:w-full [&_.rdp-month]:w-full [&_.rdp-table]:w-full
+            [&_button.rdp-day]:rounded-md
+            [&_.rdp-day_selected]:bg-indigo-600 [&_.rdp-day_selected]:text-white
+            [&_.rdp-day_range_middle]:bg-indigo-600/10
+            [&_.rdp-day_range_start]:bg-transparent
+            [&_.rdp-day_range_end]:bg-transparent
+            [&_.rdp-day_range_start]:shadow-none
+            [&_.rdp-day_range_end]:shadow-none
+            [&_.rdp-button:hover]:bg-indigo-600/10
+          "
+                    classNames={{
+                        range_start: "rounded-md bg-transparent",
+                        range_end: "rounded-md bg-transparent",
+                    }}
+                />
+            </PopoverContent>
+        </Popover>
+    );
 }
