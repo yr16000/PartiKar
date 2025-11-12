@@ -169,6 +169,50 @@ public class LocationController {
     }
 
     /**
+     * Récupère les réservations du locataire authentifié (en cours et passées).
+     * GET /api/locations/mes-reservations
+     */
+    @GetMapping("/mes-reservations")
+    public ResponseEntity<?> getMesReservations() {
+        try {
+            MesReservationsResponse reservations = locationService.getMesReservations();
+            return ResponseEntity.ok(reservations);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * Récupère les locations du propriétaire authentifié (en cours et passées).
+     * GET /api/locations/mes-locations
+     */
+    @GetMapping("/mes-locations")
+    public ResponseEntity<?> getMesLocations() {
+        try {
+            MesReservationsResponse locations = locationService.getMesLocations();
+            return ResponseEntity.ok(locations);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * Marque une réservation comme terminée (uniquement par le locataire).
+     * POST /api/locations/1/terminer
+     */
+    @PostMapping("/{locationId}/terminer")
+    public ResponseEntity<?> terminerReservation(@PathVariable Long locationId) {
+        try {
+            locationService.terminerReservation(locationId);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
      * Classe interne pour les réponses d'erreur.
      */
     private static class ErrorResponse {

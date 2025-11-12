@@ -43,6 +43,10 @@ public class Transaction {
     @Column(name = "type", nullable = false, length = 64)
     private String type;
 
+    /** Statut de la transaction : EN_ATTENTE, CONFIRMEE, ANNULEE, REMBOURSEE */
+    @Column(name = "statut", nullable = false, length = 32)
+    private String statut;
+
     /** Date/heure de la transaction (générée automatiquement) */
     @CreationTimestamp
     @Column(name = "cree_le", nullable = false, updatable = false)
@@ -52,16 +56,17 @@ public class Transaction {
     public Transaction() {}
 
     /** Transaction liée à une location */
-    public Transaction(User utilisateur, Location location, BigDecimal montant, String type) {
+    public Transaction(User utilisateur, Location location, BigDecimal montant, String type, String statut) {
         this.utilisateur = utilisateur;
         this.location = location;
         this.montant = montant;
         this.type = type;
+        this.statut = statut;
     }
 
     /** Transaction n'ayant pas de location (ex: bonus, ajustement manuel) */
-    public Transaction(User utilisateur, BigDecimal montant, String type) {
-        this(utilisateur, null, montant, type);
+    public Transaction(User utilisateur, BigDecimal montant, String type, String statut) {
+        this(utilisateur, null, montant, type, statut);
     }
 
     // Getters / Setters
@@ -79,6 +84,9 @@ public class Transaction {
 
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
+
+    public String getStatut() { return statut; }
+    public void setStatut(String statut) { this.statut = statut; }
 
     public LocalDateTime getCreeLe() { return creeLe; }
     public void setCreeLe(LocalDateTime creeLe) { this.creeLe = creeLe; }

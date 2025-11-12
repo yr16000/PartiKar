@@ -10,6 +10,7 @@ import AnnonceDetails from "./pages/AnnonceDetails";
 import Search from "./pages/Search";
 import MyAnnonces from "./pages/MyAnnonces";
 import DemandesReservation from "./pages/DemandesReservation";
+import MesReservations from "./pages/MesReservations";
 
 
 function ScrollManager() {
@@ -60,6 +61,8 @@ export default function App() {
                 <Route path="/my-annonces" element={<MyAnnonces />} />
 
                 <Route path="/demandes-reservation" element={<DemandesReservation />} />
+                <Route path="/mes-reservations" element={<MesReservations />} />
+
 
             </Routes>
         </>

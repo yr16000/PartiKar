@@ -152,6 +152,7 @@ function UserDropdown({ initials, avatarUrl, fullName, onLogout }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link to="/profile">Profil</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link to="/my-annonces">Mes annonces</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link to="/mes-reservations">Mes réservations</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link to="/demandes-reservation">Mes demandes de réservation</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link to="/publish">Publier une voiture</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />

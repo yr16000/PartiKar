@@ -53,6 +53,10 @@ public class Avis {
     @Column(name = "cree_le", nullable = false, updatable = false)
     private LocalDateTime creeLe;
 
+    /** Date de dernière modification */
+    @Column(name = "maj_le")
+    private LocalDateTime majLe;
+
     // Constructeurs
 
     public Avis() {}
@@ -92,4 +96,7 @@ public class Avis {
 
     public LocalDateTime getCreeLe() { return creeLe; }
     public void setCreeLe(LocalDateTime creeLe) { this.creeLe = creeLe; }
+
+    public LocalDateTime getMajLe() { return majLe; }
+    public void setMajLe(LocalDateTime majLe) { this.majLe = majLe; }
 }

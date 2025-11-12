@@ -33,23 +33,25 @@ public class LocationService {
     private final DisponibiliteRepository disponibiliteRepository;
     private final com.partikar.annonces.AnnonceService annonceService;
     private final com.partikar.avis.AvisRepository avisRepository;
+    private final com.partikar.transaction.TransactionService transactionService;
 
     public LocationService(LocationRepository locationRepository,
                           VoitureRepository voitureRepository,
                           UserRepository userRepository,
                           DisponibiliteRepository disponibiliteRepository,
                           com.partikar.annonces.AnnonceService annonceService,
-                          com.partikar.avis.AvisRepository avisRepository) {
+                          com.partikar.avis.AvisRepository avisRepository,
+                          com.partikar.transaction.TransactionService transactionService) {
         this.locationRepository = locationRepository;
         this.voitureRepository = voitureRepository;
         this.userRepository = userRepository;
         this.disponibiliteRepository = disponibiliteRepository;
         this.annonceService = annonceService;
         this.avisRepository = avisRepository;
+        this.transactionService = transactionService;
     }
 
     /**
-     * Crée une nouvelle réservation de voiture.
      * Vérifie la disponibilité et met à jour les disponibilités.
      *
      * @param request DTO contenant les informations de la réservation
@@ -146,6 +148,15 @@ public class LocationService {
         location.setMajLe(LocalDateTime.now());
 
         Location savedLocation = locationRepository.save(location);
+
+        // Créer une transaction EN_ATTENTE pour suspendre les crédits
+        try {
+            transactionService.creerTransactionEnAttente(locataire, savedLocation, prixTotal);
+        } catch (RuntimeException e) {
+            // Si l'utilisateur n'a pas assez de crédits, supprimer la location
+            locationRepository.delete(savedLocation);
+            throw e;
+        }
 
         // NE PAS marquer les jours comme RESERVE pour une demande EN_ATTENTE
         // Les dates seront réservées uniquement lors de l'ACCEPTATION de la demande
@@ -331,6 +342,9 @@ public class LocationService {
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
 
+        // Confirmer la transaction : débiter le locataire et créditer le propriétaire
+        transactionService.confirmerTransaction(location.getId());
+
         // Mettre à jour le statut de la voiture
         annonceService.mettreAJourStatutVoiture(location.getVoiture().getId());
 
@@ -348,6 +362,9 @@ public class LocationService {
         // Vérifier que l'utilisateur est le propriétaire
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getName() == null) {
+        // Annuler la transaction EN_ATTENTE pour libérer les crédits suspendus
+        transactionService.annulerTransaction(location.getId());
+
             throw new RuntimeException("Utilisateur non authentifié");
         }
         String email = auth.getName();
@@ -403,6 +420,9 @@ public class LocationService {
         // Pour une demande EN_ATTENTE, pas besoin de libérer les disponibilités
         // car elles n'ont jamais été réservées
 
+        // Annuler la transaction EN_ATTENTE pour libérer les crédits suspendus
+        transactionService.annulerTransaction(location.getId());
+
         // Marquer la location comme annulée
         location.setStatut("ANNULEE");
         location.setMajLe(LocalDateTime.now());
@@ -443,6 +463,131 @@ public class LocationService {
         response.setPrixTotal(location.getPrixTotal());
         response.setStatut(location.getStatut());
         response.setCreeLe(location.getCreeLe());
+        return response;
+    }
+
+    /**
+     * Récupère les réservations du locataire authentifié (en cours et passées).
+     */
+    @Transactional(readOnly = true)
+    public MesReservationsResponse getMesReservations() {
+        // Récupérer l'utilisateur authentifié
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        String email = auth.getName();
+        User locataire = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        // Récupérer toutes les réservations CONFIRMEES du locataire
+        List<Location> reservations = locationRepository.findByLocataireId(locataire.getId()).stream()
+                .filter(l -> "CONFIRMEE".equals(l.getStatut()) || "TERMINEE".equals(l.getStatut()))
+                .toList();
+
+        LocalDate aujourdhui = LocalDate.now();
+
+        // Séparer en cours et passées
+        List<LocationResponse> enCours = reservations.stream()
+                .filter(l -> "CONFIRMEE".equals(l.getStatut()))
+                .filter(l -> !l.getDateFin().isBefore(aujourdhui))
+                .map(this::toLocationResponseAvecProprio)
+                .toList();
+
+        List<LocationResponse> passees = reservations.stream()
+                .filter(l -> "TERMINEE".equals(l.getStatut()) ||
+                            ("CONFIRMEE".equals(l.getStatut()) && l.getDateFin().isBefore(aujourdhui)))
+                .map(this::toLocationResponseAvecProprio)
+                .toList();
+
+        MesReservationsResponse response = new MesReservationsResponse();
+        response.setEnCours(enCours);
+        response.setPassees(passees);
+        return response;
+    }
+
+    /**
+     * Récupère les locations du propriétaire authentifié (en cours et passées).
+     */
+    @Transactional(readOnly = true)
+    public MesReservationsResponse getMesLocations() {
+        // Récupérer l'utilisateur authentifié
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        String email = auth.getName();
+        User proprietaire = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        // Récupérer toutes les locations CONFIRMEES pour les voitures du propriétaire
+        List<Location> locations = locationRepository.findByVoitureProprietaireId(proprietaire.getId()).stream()
+                .filter(l -> "CONFIRMEE".equals(l.getStatut()) || "TERMINEE".equals(l.getStatut()))
+                .toList();
+
+        LocalDate aujourdhui = LocalDate.now();
+
+        // Séparer en cours et passées
+        List<LocationResponse> enCours = locations.stream()
+                .filter(l -> "CONFIRMEE".equals(l.getStatut()))
+                .filter(l -> !l.getDateFin().isBefore(aujourdhui))
+                .map(this::toLocationResponse)
+                .toList();
+
+        List<LocationResponse> passees = locations.stream()
+                .filter(l -> "TERMINEE".equals(l.getStatut()) ||
+                            ("CONFIRMEE".equals(l.getStatut()) && l.getDateFin().isBefore(aujourdhui)))
+                .map(this::toLocationResponse)
+                .toList();
+
+        MesReservationsResponse response = new MesReservationsResponse();
+        response.setEnCours(enCours);
+        response.setPassees(passees);
+        return response;
+    }
+
+    /**
+     * Marque une réservation comme terminée (uniquement par le locataire).
+     */
+    @Transactional
+    public void terminerReservation(Long locationId) {
+        Location location = locationRepository.findById(locationId)
+                .orElseThrow(() -> new RuntimeException("Location introuvable"));
+
+        // Vérifier que l'utilisateur est le locataire
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        String email = auth.getName();
+        User locataire = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        if (!location.getLocataire().getId().equals(locataire.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à terminer cette réservation");
+        }
+
+        // Vérifier le statut
+        if (!"CONFIRMEE".equals(location.getStatut())) {
+            throw new RuntimeException("Cette réservation ne peut pas être terminée (statut: " + location.getStatut() + ")");
+        }
+
+        // Marquer comme terminée
+        location.setStatut("TERMINEE");
+        location.setMajLe(LocalDateTime.now());
+        locationRepository.save(location);
+
+        logger.info("Réservation terminée: ID={}", locationId);
+    }
+
+    /**
+     * Convertit une Location en LocationResponse avec les infos du propriétaire.
+     */
+    private LocationResponse toLocationResponseAvecProprio(Location location) {
+        LocationResponse response = toLocationResponse(location);
+        response.setProprietaireId(location.getVoiture().getProprietaire().getId());
+        response.setProprietaireNom(location.getVoiture().getProprietaire().getNom());
+        response.setProprietairePrenom(location.getVoiture().getProprietaire().getPrenom());
         return response;
     }
 }

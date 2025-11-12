@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { Calendar as CalIcon, MapPin, Pencil } from "lucide-react";
+import { Calendar as CalIcon, MapPin, Pencil, Star, User as UserIcon } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { fr } from "date-fns/locale";
 import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,7 @@ export default function AnnonceDetails() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState("");
+    const [ownerRating, setOwnerRating] = useState({ average: 0, count: 0 });
     const [unavailable, setUnavailable] = useState(new Set());
 
     const total = (() => {
@@ -491,6 +493,27 @@ export default function AnnonceDetails() {
                 <header className="space-y-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-bold">{title || `Annonce #${id}`}</h1>
+                {/* Section Propriétaire */}
+                {!isOwner && data.proprietaireNom && (
+                    <div className="rounded-xl border bg-white p-5">
+                        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Propriétaire</h2>
+                        <div className="flex items-center gap-4">
+                            <Avatar className="h-14 w-14 ring-2 ring-border">
+                                <AvatarImage src="" alt={`${data.proprietairePrenom} ${data.proprietaireNom}`} />
+                                <AvatarFallback className="bg-primary text-white text-lg font-semibold">
+                                    {data.proprietairePrenom?.[0]?.toUpperCase() || ''}{data.proprietaireNom?.[0]?.toUpperCase() || ''}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                                <p className="text-lg font-semibold">
+                                    {data.proprietairePrenom} {data.proprietaireNom}
+                                </p>
+                                <StarRating rating={ownerRating.average} count={ownerRating.count} />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                         {published && <p className="text-sm text-muted-foreground">Publié le {published}</p>}
                         {isOwner && <p className="text-xs text-indigo-600 mt-1">Vous êtes le propriétaire de ce véhicule.</p>}
                         {isOwner && data.statut?.toLowerCase() === 'inactive' && (
@@ -851,6 +874,38 @@ function Info({ label, value }) {
         <div className="flex flex-col gap-1 p-3 rounded-lg border bg-white">
             <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
             <span className="text-sm font-medium break-words">{value !== undefined && value !== null && value !== "" ? value : "—"}</span>
+        </div>
+    );
+}
+
+function StarRating({ rating, count }) {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+
+    for (let i = 0; i < 5; i++) {
+        if (i < fullStars) {
+            stars.push(<Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />);
+        } else if (i === fullStars && hasHalfStar) {
+            stars.push(
+                <div key={i} className="relative w-4 h-4">
+                    <Star className="w-4 h-4 text-gray-300 absolute" />
+                    <div className="overflow-hidden w-2 absolute">
+                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    </div>
+                </div>
+            );
+        } else {
+            stars.push(<Star key={i} className="w-4 h-4 text-gray-300" />);
+        }
+    }
+
+    return (
+        <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">{stars}</div>
+            <span className="text-sm text-muted-foreground ml-1">
+                {rating > 0 ? `${rating.toFixed(1)} (${count} avis)` : 'Aucun avis'}
+            </span>
         </div>
     );
 }
