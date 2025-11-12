@@ -10,4 +10,7 @@ public interface AvisRepository extends JpaRepository<Avis, Long> {
     List<Avis> findByAuteurId(Long auteurId);
     List<Avis> findByLocationId(Long locationId);
     List<Avis> findByCibleId(Long cibleId);
+
+    // Compter le nombre d'avis pour une voiture spécifique
+    long countByCibleId(Long cibleId);
 }

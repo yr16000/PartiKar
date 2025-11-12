@@ -1,14 +1,15 @@
+// src/pages/Home.jsx
 import React from "react";
-import Header from "../components/layout/header.jsx";
-import Footer from "../components/layout/footer";
-import Faq from "../components/layout/faq";
-import Hero from "../components/layout/hero";
-import { Link } from "react-router-dom";
-
+import Header from "@/components/layout/header.jsx";
+import Footer from "@/components/layout/footer";
+import Faq from "@/components/layout/faq";
+import Hero from "@/components/layout/hero";
+import { Link, useNavigate } from "react-router-dom";
+import CarListing from "@/components/layout/CarListing";
 
 // shadcn/ui
-import { Button } from "../components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 // icônes
 import {
@@ -22,15 +23,65 @@ import {
     Crown,
 } from "lucide-react";
 
+/* utils */
+function toLocalDate(d) {
+    if (!d) return null;
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    const y = x.getFullYear();
+    const m = String(x.getMonth() + 1).padStart(2, "0");
+    const day = String(x.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
+
+function normalizeCoords(coords) {
+    if (!coords) return { latitude: null, longitude: null };
+    const lat = coords.latitude ?? coords.lat ?? null;
+    const lon = coords.longitude ?? coords.lng ?? null;
+    return {
+        latitude: lat != null ? Number(lat) : null,
+        longitude: lon != null ? Number(lon) : null,
+    };
+}
+
 export default function Home() {
+    const navigate = useNavigate();
+
+    // Reçoit { city, from, to, coords } depuis Hero
+    const handleHeroSearch = ({ city, from, to, coords }) => {
+        const { latitude, longitude } = normalizeCoords(coords);
+        const fromStr = toLocalDate(from);
+        const toStr = toLocalDate(to);
+
+        const params = new URLSearchParams();
+        if (city) params.set("city", city);
+        if (latitude != null) params.set("lat", String(latitude));
+        if (longitude != null) params.set("lon", String(longitude));
+        if (fromStr) params.set("from", fromStr);
+        if (toStr) params.set("to", toStr);
+
+        navigate(`/search?${params.toString()}`);
+    };
+
     return (
         <main className="min-h-screen bg-background text-foreground">
             <Header />
-            <Hero />
 
+            {/* HERO */}
+            <Hero onSearch={handleHeroSearch} />
+
+            {/* POPULAIRES */}
+            <section id="popular" className="py-16 md:py-24 scroll-mt-28">
+                <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
+                    <h2 className="text-2xl md:text-3xl font-semibold mb-6">
+                        Annonces Récentes
+                    </h2>
+                    <CarListing limit={12} />
+                </div>
+            </section>
 
             {/* COMMENT ÇA MARCHE */}
-            <section id="how" className="py-16 md:py-24">
+            <section id="how" className="py-16 md:py-24 scroll-mt-28">
                 <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
                     <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
                         {/* Étapes */}
@@ -47,17 +98,20 @@ export default function Home() {
                                     {
                                         icon: <MapPin className="w-5 h-5" />,
                                         title: "1. Cherche",
-                                        text: "Entre ton lieu et tes dates pour découvrir les véhicules autour de toi.",
+                                        text:
+                                            "Entre ton lieu et tes dates pour découvrir les véhicules autour de toi.",
                                     },
                                     {
                                         icon: <CalIcon className="w-5 h-5" />,
                                         title: "2. Réserve",
-                                        text: "Paie en ligne en toute sécurité et reçois une confirmation instantanée.",
+                                        text:
+                                            "Paie en ligne en toute sécurité et reçois une confirmation instantanée.",
                                     },
                                     {
                                         icon: <Car className="w-5 h-5" />,
                                         title: "3. Roule",
-                                        text: "Récupère la voiture à l’heure choisie et profite d’un trajet sereinement.",
+                                        text:
+                                            "Récupère la voiture à l’heure choisie et profite d’un trajet sereinement.",
                                     },
                                 ].map((step, i) => (
                                     <Card
@@ -72,7 +126,9 @@ export default function Home() {
                                                 <CardTitle className="text-lg font-semibold leading-tight">
                                                     {step.title}
                                                 </CardTitle>
-                                                <p className="text-muted-foreground text-sm mt-1">{step.text}</p>
+                                                <p className="text-muted-foreground text-sm mt-1">
+                                                    {step.text}
+                                                </p>
                                             </div>
                                         </CardHeader>
                                     </Card>
@@ -80,8 +136,6 @@ export default function Home() {
                             </div>
                         </div>
 
-
-                        {/* Image */}
                         {/* Image */}
                         <div className="relative mt-0 lg:mt-14 xl:mt-16">
                             <div className="aspect-[4/3] w-full rounded-3xl overflow-hidden border border-gray-200 shadow-lg bg-white">
@@ -92,9 +146,6 @@ export default function Home() {
                                 />
                             </div>
                         </div>
-
-
-
                     </div>
                 </div>
             </section>
@@ -106,8 +157,8 @@ export default function Home() {
                         Confiance et sécurité
                     </h2>
                     <p className="text-muted-foreground text-center mt-2 max-w-2xl mx-auto">
-                        Chaque location est encadrée par une assurance complète, un support 24/7 et
-                        des membres vérifiés.
+                        Chaque location est encadrée par une assurance complète, un support
+                        24/7 et des membres vérifiés.
                     </p>
 
                     <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -148,7 +199,7 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* CTA HOST (Propriétaires) */}
+            {/* CTA HÔTE */}
             <section className="py-16 md:py-24 border-t border-border bg-card/50">
                 <div className="mx-auto w-full max-w-[1100px] px-4 sm:px-6">
                     <Card className="bg-card shadow-brand-md">
@@ -161,14 +212,14 @@ export default function Home() {
                                     Deviens hôte et fais rouler tes revenus
                                 </h3>
                                 <p className="text-muted-foreground mt-2">
-                                    Publie ta voiture en quelques minutes et loue-la en toute sécurité aux conducteurs proches de chez toi.
+                                    Publie ta voiture en quelques minutes et loue-la en toute
+                                    sécurité aux conducteurs proches de chez toi.
                                 </p>
                             </div>
                             <div className="flex flex-col sm:flex-row items-center gap-3">
                                 <Button asChild variant="brand" className="h-11 px-6">
                                     <Link to="/publish">Publier une voiture</Link>
                                 </Button>
-
                                 <Button variant="outline" className="h-11 px-6">
                                     En savoir plus
                                 </Button>
@@ -177,7 +228,14 @@ export default function Home() {
                     </Card>
                 </div>
             </section>
-            <Faq />
+
+            {/* FAQ */}
+            <section id="faq" className="py-16 md:py-24">
+                <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
+                    <h2 className="sr-only">Foire aux questions</h2>
+                    <Faq />
+                </div>
+            </section>
 
             <Footer />
         </main>

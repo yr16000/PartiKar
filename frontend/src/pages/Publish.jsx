@@ -1,26 +1,32 @@
-import React, { useState } from "react";
+// src/pages/Publish.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import Header from "../components/layout/header.jsx";
 import Footer from "../components/layout/footer";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { CarFront, Calendar } from "lucide-react";
-import {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-} from "@/components/ui/popover";
-import {
-    Command,
-    CommandInput,
-    CommandList,
-    CommandEmpty,
-    CommandGroup,
-    CommandItem,
-} from "@/components/ui/command";
+import { CarFront, Calendar as CalendarIcon } from "lucide-react";
+
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+
+// Auto-complétion
+import PlaceAutocomplete from "@/components/ui/PlaceAutocomplete";
+import BrandAutocomplete from "@/components/ui/BrandAutocomplete";
+
+// Auth
+import { useAuth } from "../context/AuthContext.jsx";
+
+// Datas
+import { BRANDS, MODELES_PAR_MARQUE, CARBURANTS, BOITES } from "@/constants/vehicleData.jsx";
+
+// NEW: DateRangePicker sans heures (réutilisable)
+import DateRangePicker from "@/components/ui/DateRangePicker.jsx";
 
 export default function Publish() {
+    const { token } = useAuth();
+
     const [form, setForm] = useState({
         marque: "",
         modele: "",
@@ -28,21 +34,114 @@ export default function Publish() {
         annee: "",
         prixJour: "",
         ville: "",
+        latitude: null,
+        longitude: null,
         imageUrl: "",
+        typeCarburant: "",
+        boiteVitesse: "",
+        nbPlaces: "",
+        climatisation: false,
+        couleur: "",
+        kilometrage: "",
+        description: "",
     });
+
+    const onChange = (e) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handlePlaceSelect = (place) => {
+        setForm((prev) => ({
+            ...prev,
+            ville: place?.label || "",
+            latitude: place?.latitude ?? null,
+            longitude: place?.longitude ?? null,
+        }));
+    };
+
+    // Modèles suggérés en fonction de la marque
+    const modelesSuggeres = useMemo(() => {
+        if (!form.marque) return [];
+        const normalize = (s) => (s ? s.normalize?.('NFD').replace(/[-\u036f]/g, '').toLowerCase() : '');
+        // utilise la clé exacte si possible
+        if (MODELES_PAR_MARQUE[form.marque]) return MODELES_PAR_MARQUE[form.marque];
+        // recherche insensible à la casse et aux accents
+        const nk = normalize(form.marque);
+        const lowerKey = Object.keys(MODELES_PAR_MARQUE).find(k => normalize(k) === nk);
+        return lowerKey ? MODELES_PAR_MARQUE[lowerKey] : [];
+    }, [form.marque]);
+
+    // Si la marque change et que le modèle courant n'est pas dans les suggestions, on le réinitialise
+    useEffect(() => {
+        if (!form.marque) return;
+        if (!form.modele) return;
+        const isValid = modelesSuggeres.some(m => m.toLowerCase() === (form.modele || '').toLowerCase());
+        if (!isValid) {
+            setForm(p => ({ ...p, modele: '' }));
+        }
+    }, [form.marque, modelesSuggeres]);
+
+    // Disponibilités (sans heures) via DateRangePicker
+    const today = useMemo(() => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }, []);
+    const [dateRange, setDateRange] = useState({ from: null, to: null });
+
+    // Popovers "Année", "Carburant", "Boîte" contrôlés par shadcn/command
+    const [openYear, setOpenYear] = useState(false);
+    const [openCarburant, setOpenCarburant] = useState(false);
+    const [openBoite, setOpenBoite] = useState(false);
+    const currentYear = new Date().getFullYear();
+    const annees = useMemo(
+        () => Array.from({ length: currentYear - 1899 }, (_, i) => (currentYear - i).toString()),
+        [currentYear]
+    );
 
     const [erreur, setErreur] = useState("");
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [open, setOpen] = useState(false);
 
-    // Liste dynamique des années (1900 → année actuelle)
-    const currentYear = new Date().getFullYear();
-    const annees = Array.from({ length: currentYear - 1899 }, (_, i) => (currentYear - i).toString());
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setForm((prev) => ({ ...prev, [name]: value }));
+    const validate = () => {
+        const required = [
+            "marque",
+            "modele",
+            "immatriculation",
+            "annee",
+            "prixJour",
+            "ville",
+            "imageUrl",
+            "kilometrage",
+            "typeCarburant",
+            "boiteVitesse",
+            "nbPlaces",
+        ];
+        for (const k of required) {
+            if (!form[k]) return `Le champ "${k}" est obligatoire.`;
+        }
+        const brandsLower = BRANDS.map((b) => b.toLowerCase());
+        if (!brandsLower.includes((form.marque || "").toLowerCase())) {
+            return "La marque doit être choisie dans la liste prédéfinie.";
+        }
+        if (isNaN(Number(form.prixJour)) || Number(form.prixJour) <= 0) {
+            return "Le prix par jour doit être un nombre positif.";
+        }
+        const places = Number(form.nbPlaces);
+        if (!Number.isFinite(places) || places < 1 || places > 9) {
+            return "Le nombre de places doit être un entier entre 1 et 9.";
+        }
+        if (!CARBURANTS.includes(form.typeCarburant)) {
+            return "Type de carburant invalide.";
+        }
+        if (!BOITES.includes(form.boiteVitesse)) {
+            return "Boîte de vitesses invalide.";
+        }
+        if (!dateRange?.from || !dateRange?.to) {
+            return "Sélectionne une période de disponibilité.";
+        }
+        return null;
     };
 
     const handleSubmit = async (e) => {
@@ -50,21 +149,74 @@ export default function Publish() {
         setErreur("");
         setSuccess(false);
 
-        // Vérifications simples côté frontend
-        for (const [key, value] of Object.entries(form)) {
-            if (!value) {
-                return setErreur("Tous les champs sont obligatoires.");
-            }
-        }
-        if (isNaN(Number(form.prixJour)) || form.prixJour <= 0) {
-            return setErreur("Le prix par jour doit être un nombre positif.");
-        }
+        const error = validate();
+        if (error) return setErreur(error);
 
-        // Simulation locale (aucune requête réseau)
+        const payload = {
+            marque: form.marque,
+            modele: form.modele,
+            immatriculation: form.immatriculation,
+            annee: form.annee ? Number(form.annee) : null,
+            couleur: form.couleur || null,
+            typeCarburant: form.typeCarburant,
+            nbPlaces: form.nbPlaces ? Number(form.nbPlaces) : null,
+            description: form.description || null,
+            imageUrl: form.imageUrl,
+            prixParJour: form.prixJour ? Number(form.prixJour) : null,
+            boiteVitesse: form.boiteVitesse,
+            climatisation: !!form.climatisation,
+            localisation: form.ville,
+            kilometrage: form.kilometrage ? Number(form.kilometrage) : null,
+            latitude: form.latitude,
+            longitude: form.longitude,
+            dateDebut: dateRange.from ? dateRange.from.toISOString().slice(0, 10) : null,
+            dateFin: dateRange.to ? dateRange.to.toISOString().slice(0, 10) : null,
+        };
+
         try {
             setLoading(true);
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            console.log("🚗 Données soumises :", form);
+            const headers = { "Content-Type": "application/json" };
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+
+            console.debug("Création annonce - payload:", payload);
+
+            const res = await fetch("/api/annonces", {
+                method: "POST",
+                headers,
+                body: JSON.stringify(payload),
+            });
+
+            if (res.status === 401) {
+                const msg = "401 - Vous devez être connecté(e) pour publier une annonce.";
+                console.error(msg);
+                setErreur(msg);
+                return;
+            }
+            if (res.status === 403) {
+                const msg = "403 - Accès refusé : vous n'êtes pas autorisé(e) à effectuer cette action.";
+                console.error(msg);
+                setErreur(msg);
+                return;
+            }
+
+            if (!res.ok) {
+                console.error("Création annonce - réponse:", res);
+                let errText;
+                try {
+                    const data = await res.json();
+                    errText = data?.message || data?.error || JSON.stringify(data);
+                } catch {
+                    try {
+                        errText = await res.text();
+                    } catch {
+                        errText = null;
+                    }
+                }
+                const fullMsg = `${res.status} ${res.statusText} - ${errText || "Erreur serveur"}`;
+                console.error("Création annonce - body erreur:", errText);
+                setErreur(fullMsg);
+                return;
+            }
 
             setSuccess(true);
             setForm({
@@ -74,10 +226,20 @@ export default function Publish() {
                 annee: "",
                 prixJour: "",
                 ville: "",
+                latitude: null,
+                longitude: null,
                 imageUrl: "",
+                typeCarburant: "",
+                boiteVitesse: "",
+                nbPlaces: "",
+                kilometrage: "",
+                climatisation: false,
+                couleur: "",
+                description: "",
             });
+            setDateRange({ from: null, to: null });
         } catch (err) {
-            setErreur("Erreur de simulation.");
+            setErreur(err.message || "Une erreur est survenue.");
         } finally {
             setLoading(false);
         }
@@ -88,7 +250,7 @@ export default function Publish() {
             <Header />
 
             <section className="flex-1 flex items-center justify-center py-16 px-4">
-                <Card className="w-full max-w-2xl border border-border bg-card shadow-lg">
+                <Card className="w-full max-w-3xl border border-border bg-card shadow-lg">
                     <CardHeader className="text-center">
                         <div className="flex justify-center mb-3">
                             <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center text-primary">
@@ -97,145 +259,281 @@ export default function Publish() {
                         </div>
                         <CardTitle className="text-2xl font-bold">Publier une voiture</CardTitle>
                         <p className="text-muted-foreground text-sm mt-1">
-                            Renseignez les informations de votre véhicule pour le mettre en location.
+                            Renseigne les informations du véhicule pour le mettre en location.
                         </p>
                     </CardHeader>
 
                     <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Marque & Modèle */}
+                        <form onSubmit={handleSubmit} className="space-y-8">
+                            {/* Marque / Modèle */}
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div>
-                                    <Label className="block mb-2 text-sm font-medium">Marque *</Label>
-                                    <Input
-                                        name="marque"
-                                        required
+                                    <Label className="mb-2 block text-sm">Marque *</Label>
+                                    <BrandAutocomplete
                                         value={form.marque}
-                                        onChange={handleChange}
-                                        placeholder="Renault"
+                                        onChange={(v) => setForm((p) => ({ ...p, marque: v }))}
+                                        onSelect={(v) => setForm((p) => ({ ...p, marque: v }))}
+                                        options={BRANDS}
+                                        placeholder="Marque"
+                                        requireMatch={true}
                                     />
                                 </div>
                                 <div>
-                                    <Label className="block mb-2 text-sm font-medium">Modèle *</Label>
-                                    <Input
-                                        name="modele"
-                                        required
+                                    <Label className="mb-2 block text-sm">Modèle *</Label>
+                                    <BrandAutocomplete
                                         value={form.modele}
-                                        onChange={handleChange}
-                                        placeholder="Clio"
+                                        onChange={(v) => setForm((p) => ({ ...p, modele: v }))}
+                                        onSelect={(v) => setForm((p) => ({ ...p, modele: v }))}
+                                        options={modelesSuggeres}
+                                        placeholder={form.marque ? "Choisir un modèle" : "Sélectionnez d'abord une marque"}
+                                        requireMatch={modelesSuggeres.length > 0}
+                                        disabled={modelesSuggeres.length === 0}
                                     />
+                                    {modelesSuggeres.length === 0 && (
+                                        <p className="mt-1 text-xs text-muted-foreground">Sélectionnez d'abord une marque pour voir les modèles.</p>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Immatriculation & Année */}
+                            {/* Immatriculation / Année */}
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div>
-                                    <Label className="block mb-2 text-sm font-medium">Immatriculation *</Label>
+                                    <Label className="mb-2 block text-sm">Immatriculation *</Label>
                                     <Input
                                         name="immatriculation"
-                                        required
-                                        placeholder="AA-123-BB"
                                         value={form.immatriculation}
-                                        onChange={handleChange}
+                                        onChange={onChange}
+                                        placeholder="AA-123-BB"
+                                        required
                                     />
                                 </div>
+
                                 <div>
-                                    <Label className="block mb-2 text-sm font-medium">Année *</Label>
+                                    <Label className="mb-2 block text-sm">Année *</Label>
+                                    <div className="relative">
+                                        <Button variant="outline" role="combobox" className="w-full justify-between h-11" onClick={(e) => { e.preventDefault(); setOpenYear(true); }}>
+                                            {form.annee ? form.annee : <span className="text-muted-foreground">Choisir une année</span>}
+                                            <CalendarIcon className="ml-2 h-4 w-4 opacity-50" />
+                                        </Button>
 
-                                    {/* Sélecteur d’année shadcn */}
-                                    {/* Sélecteur d’année shadcn (sans recherche, vers le bas) */}
-                                    <Popover open={open} onOpenChange={setOpen}>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className="w-full justify-between h-11"
-                                            >
-                                                {form.annee ? (
-                                                    form.annee
-                                                ) : (
-                                                    <span className="text-muted-foreground">Choisir une année</span>
-                                                )}
-                                                <Calendar className="ml-2 h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent
-                                            className="w-[280px] p-0"
-                                            side="bottom"
-                                            align="start"
-                                            avoidCollisions={false}
-                                        >
-                                            <Command>
-                                                {/* Supprimé le champ de recherche */}
-                                                <CommandList>
-                                                    <CommandEmpty>Aucune année trouvée</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {annees.map((year) => (
-                                                            <CommandItem
-                                                                key={year}
-                                                                onSelect={() => {
-                                                                    setForm((prev) => ({ ...prev, annee: year }));
-                                                                    setOpen(false);
-                                                                }}
-                                                            >
-                                                                {year}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-
+                                        {openYear && (
+                                            <div className="absolute z-[400] mt-2 w-[280px] p-0 rounded-md border bg-popover text-popover-foreground shadow-lg">
+                                                <Command>
+                                                    <CommandInput placeholder="Rechercher une année..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>Aucune année</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {annees.map((year) => (
+                                                                <CommandItem
+                                                                    key={year}
+                                                                    onSelect={() => {
+                                                                        setForm((p) => ({ ...p, annee: year }));
+                                                                        setOpenYear(false);
+                                                                    }}
+                                                                >
+                                                                    {year}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Prix et Ville */}
+                            {/* Carburant / Boîte */}
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div>
-                                    <Label className="block mb-2 text-sm font-medium">Prix par jour (€) *</Label>
-                                    <Input
-                                        name="prixJour"
-                                        type="number"
-                                        required
-                                        placeholder="50"
-                                        value={form.prixJour}
-                                        onChange={handleChange}
-                                    />
+                                    <Label className="mb-2 block text-sm">Type carburant *</Label>
+                                    <div className="relative">
+                                        <Button variant="outline" role="combobox" className="w-full justify-between h-11" onClick={(e) => { e.preventDefault(); setOpenCarburant((o) => !o); }}>
+                                            {form.typeCarburant || <span className="text-muted-foreground">Sélectionner</span>}
+                                        </Button>
+                                        {openCarburant && (
+                                            <div className="absolute z-[400] mt-2 w-[260px] p-0 rounded-md border bg-popover text-popover-foreground shadow-lg">
+                                                <Command>
+                                                    <CommandList>
+                                                        <CommandEmpty>Aucun résultat</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {CARBURANTS.map((c) => (
+                                                                <CommandItem
+                                                                    key={c}
+                                                                    onSelect={() => {
+                                                                        setForm((p) => ({ ...p, typeCarburant: c }));
+                                                                        setOpenCarburant(false);
+                                                                    }}
+                                                                >
+                                                                    {c}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
+
                                 <div>
-                                    <Label className="block mb-2 text-sm font-medium">Ville *</Label>
+                                    <Label className="mb-2 block text-sm">Boîte de vitesses *</Label>
+                                    <div className="relative">
+                                        <Button variant="outline" role="combobox" className="w-full justify-between h-11" onClick={(e) => { e.preventDefault(); setOpenBoite((o) => !o); }}>
+                                            {form.boiteVitesse || <span className="text-muted-foreground">Sélectionner</span>}
+                                        </Button>
+                                        {openBoite && (
+                                            <div className="absolute z-[400] mt-2 w-[260px] p-0 rounded-md border bg-popover text-popover-foreground shadow-lg">
+                                                <Command>
+                                                    <CommandList>
+                                                        <CommandEmpty>Aucun résultat</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {BOITES.map((b) => (
+                                                                <CommandItem
+                                                                    key={b}
+                                                                    onSelect={() => {
+                                                                        setForm((p) => ({ ...p, boiteVitesse: b }));
+                                                                        setOpenBoite(false);
+                                                                    }}
+                                                                >
+                                                                    {b}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Places / Clim */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <Label className="mb-2 block text-sm">Nombre de places *</Label>
                                     <Input
-                                        name="ville"
+                                        name="nbPlaces"
+                                        type="number"
+                                        min={1}
+                                        max={9}
+                                        step={1}
+                                        value={form.nbPlaces}
+                                        onChange={onChange}
                                         required
-                                        placeholder="Paris"
-                                        value={form.ville}
-                                        onChange={handleChange}
                                     />
                                 </div>
+
+                                <div>
+                                    <Label className="mb-2 block text-sm">Climatisation</Label>
+                                    <Select
+                                        value={form.climatisation ? "OUI" : "NON"}
+                                        onValueChange={(v) => setForm((p) => ({ ...p, climatisation: v === "OUI" }))}
+                                    >
+                                        <SelectTrigger className="h-11 w-full justify-between">
+                                            <SelectValue placeholder="Sélectionner" />
+                                        </SelectTrigger>
+                                        <SelectContent side="bottom" align="start">
+                                            <SelectItem value="OUI">Oui</SelectItem>
+                                            <SelectItem value="NON">Non</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* Couleur / Kilométrage */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <Label className="mb-2 block text-sm">Couleur (optionnel)</Label>
+                                    <Input name="couleur" value={form.couleur} onChange={onChange} placeholder="Noir" />
+                                </div>
+
+                                <div>
+                                    <Label className="mb-2 block text-sm">Kilométrage *</Label>
+                                    <Input
+                                        name="kilometrage"
+                                        type="number"
+                                        min={0}
+                                        value={form.kilometrage || ""}
+                                        onChange={onChange}
+                                        placeholder="Ex : 120000"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Lieu pleine largeur */}
+                            <div>
+                                <Label className="mb-2 block text-sm">Lieu *</Label>
+                                <PlaceAutocomplete
+                                    value={form.ville}
+                                    onChange={(v) => setForm((prev) => ({ ...prev, ville: v }))}
+                                    onSelect={handlePlaceSelect}
+                                    placeholder="Paris"
+                                />
                             </div>
 
                             {/* Image */}
                             <div>
-                                <Label className="block mb-2 text-sm font-medium">Lien de l’image *</Label>
+                                <Label className="mb-2 block text-sm">Lien de l’image *</Label>
                                 <Input
                                     name="imageUrl"
-                                    required
-                                    placeholder="https://exemple.com/ma-voiture.jpg"
                                     value={form.imageUrl}
-                                    onChange={handleChange}
+                                    onChange={onChange}
+                                    placeholder="https://exemple.com/voiture.jpg"
+                                    required
+                                />
+                            </div>
+
+                            {/* Prix + Disponibilité (DateRangePicker réutilisé) */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <Label className="mb-2 block text-sm">Prix par jour (€) *</Label>
+                                    <Input
+                                        name="prixJour"
+                                        type="number"
+                                        min={1}
+                                        value={form.prixJour}
+                                        onChange={onChange}
+                                        placeholder="50"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label className="mb-2 block text-sm">Disponibilité *</Label>
+                                    <DateRangePicker
+                                        value={dateRange}
+                                        onChange={setDateRange}
+                                        minDate={today}
+                                        monthsResponsive={{ base: 1, sm: 2 }}
+                                        // disabledDates / unavailableDays peuvent être passés plus tard pour griser certains jours
+                                        buttonClassName="w-full justify-between h-11"
+                                        placeholder="Sélectionner une période"
+                                        iconRight={<CalendarIcon className="ml-2 h-4 w-4 opacity-50" />}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Description */}
+                            <div>
+                                <Label className="mb-2 block text-sm">Description (optionnel)</Label>
+                                <textarea
+                                    name="description"
+                                    value={form.description}
+                                    onChange={onChange}
+                                    className="min-h-[110px] w-full rounded-md border bg-background p-3 text-sm"
+                                    placeholder="Infos utiles, état, équipements..."
                                 />
                             </div>
 
                             {/* Messages */}
                             {erreur && <p className="text-destructive text-sm">{erreur}</p>}
-                            {success && (
-                                <p className="text-green-600 text-sm">✅ Voiture publiée avec succès (simulation)</p>
-                            )}
+                            {success && <p className="text-green-600 text-sm">Annonce publiée avec succès</p>}
 
                             {/* Bouton */}
                             <Button type="submit" variant="brand" className="w-full h-11" disabled={loading}>
-                                {loading ? "Publication..." : "Publier la voiture"}
+                                {loading ? "Publication..." : "Publier"}
                             </Button>
                         </form>
                     </CardContent>

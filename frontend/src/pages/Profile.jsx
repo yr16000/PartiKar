@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/header.jsx";
 import Footer from "../components/layout/footer.jsx";
 
@@ -25,6 +26,7 @@ const redirectToLogin = () => window.location.replace("/login?next=/profile");
 export default function Profile() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     // 🔒 garde d’accès
     useEffect(() => {

@@ -6,6 +6,11 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Publish from "./pages/Publish";
 import Profile from "./pages/Profile";
+import AnnonceDetails from "./pages/AnnonceDetails";
+import Search from "./pages/Search";
+import MyAnnonces from "./pages/MyAnnonces";
+import DemandesReservation from "./pages/DemandesReservation";
+import MesReservations from "./pages/MesReservations";
 
 
 function ScrollManager() {
@@ -48,6 +53,15 @@ export default function App() {
 
                 {/* PAGE PROFIL UTILISATEUR */}
                 <Route path="/profile" element={<Profile />} />
+
+                <Route path="/annonces/:id" element={<AnnonceDetails />} />
+
+                <Route path="/search" element={<Search />} />
+
+                <Route path="/my-annonces" element={<MyAnnonces />} />
+
+                <Route path="/demandes-reservation" element={<DemandesReservation />} />
+                <Route path="/mes-reservations" element={<MesReservations />} />
 
 
             </Routes>
