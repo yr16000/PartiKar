@@ -1,15 +1,15 @@
 // src/pages/Home.jsx
 import React from "react";
-import Header from "../components/layout/header.jsx";
-import Footer from "../components/layout/footer";
-import Faq from "../components/layout/faq";
-import Hero from "../components/layout/hero";
+import Header from "@/components/layout/header.jsx";
+import Footer from "@/components/layout/footer";
+import Faq from "@/components/layout/faq";
+import Hero from "@/components/layout/hero";
 import { Link, useNavigate } from "react-router-dom";
-import CarListing from "../components/layout/CarListing";
+import CarListing from "@/components/layout/CarListing";
 
 // shadcn/ui
-import { Button } from "../components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 // icônes
 import {
@@ -23,6 +23,7 @@ import {
     Crown,
 } from "lucide-react";
 
+/* utils */
 function toLocalDate(d) {
     if (!d) return null;
     const x = new Date(d);
@@ -46,7 +47,7 @@ function normalizeCoords(coords) {
 export default function Home() {
     const navigate = useNavigate();
 
-    // Reçoit { city, from, to, coords } depuis SearchBar via Hero
+    // Reçoit { city, from, to, coords } depuis Hero
     const handleHeroSearch = ({ city, from, to, coords }) => {
         const { latitude, longitude } = normalizeCoords(coords);
         const fromStr = toLocalDate(from);
@@ -66,13 +67,21 @@ export default function Home() {
         <main className="min-h-screen bg-background text-foreground">
             <Header />
 
-            {/* ⬇️ on passe onSearch au Hero */}
+            {/* HERO */}
             <Hero onSearch={handleHeroSearch} />
 
-            <CarListing />
+            {/* POPULAIRES */}
+            <section id="popular" className="py-16 md:py-24 scroll-mt-28">
+                <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
+                    <h2 className="text-2xl md:text-3xl font-semibold mb-6">
+                        Annonces populaires
+                    </h2>
+                    <CarListing />
+                </div>
+            </section>
 
             {/* COMMENT ÇA MARCHE */}
-            <section id="how" className="py-16 md:py-24">
+            <section id="how" className="py-16 md:py-24 scroll-mt-28">
                 <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
                     <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
                         {/* Étapes */}
@@ -172,8 +181,7 @@ export default function Home() {
                             {
                                 icon: <CheckCircle className="w-5 h-5" />,
                                 title: "Annulation flexible",
-                                text:
-                                    "Des conditions simples et claires pour plus de liberté.",
+                                text: "Des conditions simples et claires pour plus de liberté.",
                             },
                         ].map((item, i) => (
                             <Card
@@ -191,7 +199,7 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* CTA HOST (Propriétaires) */}
+            {/* CTA HÔTE */}
             <section className="py-16 md:py-24 border-t border-border bg-card/50">
                 <div className="mx-auto w-full max-w-[1100px] px-4 sm:px-6">
                     <Card className="bg-card shadow-brand-md">
@@ -221,7 +229,14 @@ export default function Home() {
                 </div>
             </section>
 
-            <Faq />
+            {/* FAQ */}
+            <section id="faq" className="py-16 md:py-24">
+                <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
+                    <h2 className="sr-only">Foire aux questions</h2>
+                    <Faq />
+                </div>
+            </section>
+
             <Footer />
         </main>
     );

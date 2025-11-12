@@ -1,5 +1,8 @@
-import React from "react"
-import { Button } from "@/components/ui/button"
+// src/components/layout/footer.jsx
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { HashLink } from "react-router-hash-link";
 
 export default function Footer() {
     return (
@@ -10,8 +13,7 @@ export default function Footer() {
                     {/* Logo + description */}
                     <div>
                         <div className="flex items-center gap-3">
-
-                            <span className="text-xl font-bold text-foreground">
+              <span className="text-xl font-bold text-foreground">
                 Parti
                 <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                   Kar
@@ -24,7 +26,7 @@ export default function Footer() {
                         </p>
                         <div className="mt-4">
                             <Button asChild variant="brand">
-                                <a href="/login">Commencer</a>
+                                <Link to="/login">Commencer</Link>
                             </Button>
                         </div>
                     </div>
@@ -34,19 +36,31 @@ export default function Footer() {
                         <p className="font-semibold text-foreground">Découvrir</p>
                         <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                             <li>
-                                <a href="#how" className="hover:text-foreground transition-colors">
+                                <HashLink
+                                    smooth
+                                    to="/#how"
+                                    className="hover:text-foreground transition-colors"
+                                >
                                     Comment ça marche
-                                </a>
+                                </HashLink>
                             </li>
                             <li>
-                                <a href="#popular" className="hover:text-foreground transition-colors">
+                                <HashLink
+                                    smooth
+                                    to="/#popular"
+                                    className="hover:text-foreground transition-colors"
+                                >
                                     Voitures populaires
-                                </a>
+                                </HashLink>
                             </li>
                             <li>
-                                <a href="#trust" className="hover:text-foreground transition-colors">
-                                    Confiance & sécurité
-                                </a>
+                                <HashLink
+                                    smooth
+                                    to="/#trust"
+                                    className="hover:text-foreground transition-colors"
+                                >
+                                    Confiance et sécurité
+                                </HashLink>
                             </li>
                         </ul>
                     </div>
@@ -56,41 +70,44 @@ export default function Footer() {
                         <p className="font-semibold text-foreground">Propriétaires</p>
                         <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                             <li>
-                                <a href="#" className="hover:text-foreground transition-colors">
+                                <Link
+                                    to="/publish"
+                                    className="hover:text-foreground transition-colors"
+                                >
                                     Publier une annonce
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" className="hover:text-foreground transition-colors">
-                                    Tarification & paiements
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" className="hover:text-foreground transition-colors">
-                                    Assurance & assistance
-                                </a>
+                                </Link>
                             </li>
                         </ul>
                     </div>
 
-                    {/* À propos */}
+                    {/* Autres liens */}
                     <div>
-                        <p className="font-semibold text-foreground">À propos</p>
+                        <p className="font-semibold text-foreground">Liens utiles</p>
                         <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                             <li>
-                                <a href="#" className="hover:text-foreground transition-colors">
-                                    Notre mission
-                                </a>
+                                <Link
+                                    to="/search"
+                                    className="hover:text-foreground transition-colors"
+                                >
+                                    Rechercher
+                                </Link>
                             </li>
                             <li>
-                                <a href="#" className="hover:text-foreground transition-colors">
-                                    Presse
-                                </a>
+                                <Link
+                                    to="/login"
+                                    className="hover:text-foreground transition-colors"
+                                >
+                                    Se connecter
+                                </Link>
                             </li>
                             <li>
-                                <a href="#" className="hover:text-foreground transition-colors">
-                                    Contact
-                                </a>
+                                <HashLink
+                                    smooth
+                                    to="/#faq"
+                                    className="hover:text-foreground transition-colors"
+                                >
+                                    FAQ
+                                </HashLink>
                             </li>
                         </ul>
                     </div>
@@ -99,19 +116,8 @@ export default function Footer() {
                 {/* Bas du footer */}
                 <div className="mt-10 pt-6 border-t border-border text-sm text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-3">
                     <p>© {new Date().getFullYear()} PartiKar — Tous droits réservés.</p>
-                    <div className="flex gap-4">
-                        <a href="#" className="hover:text-foreground transition-colors">
-                            CGU
-                        </a>
-                        <a href="#" className="hover:text-foreground transition-colors">
-                            Confidentialité
-                        </a>
-                        <a href="#" className="hover:text-foreground transition-colors">
-                            Cookies
-                        </a>
-                    </div>
                 </div>
             </div>
         </footer>
-    )
+    );
 }
