@@ -7,9 +7,7 @@ import Footer from "@/components/layout/footer.jsx";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { Calendar as CalIcon, MapPin, Pencil, Star, User as UserIcon } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Calendar as CalIcon, Pencil } from "lucide-react";
 import { fr } from "date-fns/locale";
 import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -20,6 +18,8 @@ import { BRANDS, MODELES_PAR_MARQUE, CARBURANTS, BOITES } from "@/constants/vehi
 import { Label } from "@/components/ui/label";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 
+import ReservationPanel from "@/components/layout/ReservationPanel";
+
 const FALLBACK = "https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=1600&auto=format&fit=crop";
 
 function toYMD(d) {
@@ -29,22 +29,10 @@ function toYMD(d) {
     return `${y}-${m}-${dd}`;
 }
 
-function diffDaysInclusive(from, to) {
-    const ms = 24 * 60 * 60 * 1000;
-    const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-    const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
-    const raw = Math.round((end - start) / ms) + 1;
-    return Math.max(1, raw);
-}
-
 export default function AnnonceDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { token } = useAuth();
-
-    const [reserving, setReserving] = useState(false);
-    const [reservationError, setReservationError] = useState("");
-    const [reservationSuccess, setReservationSuccess] = useState(false);
 
     const today = useMemo(() => {
         const d = new Date();
@@ -52,6 +40,7 @@ export default function AnnonceDetails() {
         return d;
     }, []);
 
+    // Nombre de mois affichés dans le calendrier (responsive)
     const [months, setMonths] = useState(1);
     useEffect(() => {
         const mql = window.matchMedia("(min-width: 640px)");
@@ -61,78 +50,15 @@ export default function AnnonceDetails() {
         return () => mql.removeEventListener?.("change", handler);
     }, []);
 
-    const [range, setRange] = useState({ from: today, to: today });
-    const [hour, setHour] = useState("10:00");
-    const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
-
-    const formatRangeWithHour = (r, h) => {
-        if (!r?.from) return "Sélectionner les dates";
-        const opt = { day: "2-digit", month: "short" };
-        const f = r.from.toLocaleDateString("fr-FR", opt);
-        const t = (r.to ?? r.from).toLocaleDateString("fr-FR", opt);
-        return `${f} → ${t}`; // Plus d'heure affichée
-    };
-
+    // Données annonce
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState("");
-    const [ownerRating, setOwnerRating] = useState({ average: 0, count: 0 });
+
+    // Jours indisponibles (YYYY-MM-DD) pour le calendrier de réservation
     const [unavailable, setUnavailable] = useState(new Set());
 
-    const total = (() => {
-        const price = Number(data?.prixParJour ?? 0);
-        const days = diffDaysInclusive(range.from, range.to ?? range.from);
-        return price * days;
-    })();
-
-    const handleReservation = async () => {
-        if (!token) {
-            setReservationError("Vous devez être connecté pour réserver une voiture");
-            navigate("/login", { state: { from: `/annonce/${id}` } });
-            return;
-        }
-
-        setReservationError("");
-        setReservationSuccess(false);
-        setReserving(true);
-
-        try {
-            const payload = {
-                voitureId: Number(id),
-                dateDebut: toYMD(range.from),
-                dateFin: toYMD(range.to ?? range.from),
-                heureDebut: hour,
-                heureFin: hour,
-            };
-
-            const response = await fetch("http://localhost:8080/api/locations", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || "Erreur lors de la réservation");
-            }
-
-            await response.json();
-            setReservationSuccess(true);
-
-            setTimeout(() => {
-                navigate("/profile", { state: { tab: "mes-demandes" } });
-            }, 1500);
-        } catch (error) {
-            console.error("Erreur réservation:", error);
-            setReservationError(error.message || "Une erreur est survenue lors de la réservation");
-        } finally {
-            setReserving(false);
-        }
-    };
-
+    // Proprio / édition
     const [isOwner, setIsOwner] = useState(false);
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -142,6 +68,7 @@ export default function AnnonceDetails() {
     const [editForm, setEditForm] = useState({});
     const [originalData, setOriginalData] = useState(null);
 
+    // Suggestions de modèles en fonction de la marque
     const modelesSuggeres = useMemo(() => {
         if (!editForm.marque) return [];
         const normalize = s => (s ? s.normalize('NFD').replace(/[\u0000-\u036f]/g, '').toLowerCase() : '');
@@ -151,29 +78,27 @@ export default function AnnonceDetails() {
         return key ? MODELES_PAR_MARQUE[key] : [];
     }, [editForm.marque]);
 
-    // Réinitialiser le modèle SEULEMENT si la marque change (pas pendant la saisie du modèle)
+    // Réinitialiser le modèle uniquement si la marque change et que le modèle courant n'est plus valide
     useEffect(() => {
         if (!editForm.marque) return;
-        // Ne rien faire si le modèle est vide (utilisateur en train de taper)
         if (!editForm.modele) return;
-        // Vérifier si le modèle actuel est valide pour la marque
         const isValid = modelesSuggeres.some(m => m.toLowerCase() === (editForm.modele || '').toLowerCase());
-        // Seulement réinitialiser si le modèle est invalide ET qu'il y a des suggestions disponibles
         if (!isValid && modelesSuggeres.length > 0) {
-            // Vérifier si c'est bien un changement de marque (pas juste une saisie en cours)
-            const isPartialMatch = modelesSuggeres.some(m =>
-                m.toLowerCase().startsWith((editForm.modele || '').toLowerCase())
-            );
-            // Ne réinitialiser que si ce n'est pas une saisie partielle en cours
-            if (!isPartialMatch) {
-                setEditForm(p => ({ ...p, modele: '' }));
-            }
+            const isPartial = modelesSuggeres.some(m => m.toLowerCase().startsWith((editForm.modele || '').toLowerCase()));
+            if (!isPartial) setEditForm(p => ({ ...p, modele: '' }));
         }
-    }, [editForm.marque]); // Ne se déclenche QUE quand la marque change
+    }, [editForm.marque]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Dispos côté proprio (vue édition)
     const [editRange, setEditRange] = useState({ from: null, to: null });
     const [currentDispoRange, setCurrentDispoRange] = useState(null);
-    const rangeLabel = useMemo(() => editRange.from && editRange.to ? `${editRange.from.toLocaleDateString('fr-FR')} → ${editRange.to.toLocaleDateString('fr-FR')}` : 'Sélectionner une période de disponibilité', [editRange]);
+    const rangeLabel = useMemo(
+        () =>
+            editRange.from && editRange.to
+                ? `${editRange.from.toLocaleDateString('fr-FR')} → ${editRange.to.toLocaleDateString('fr-FR')}`
+                : 'Sélectionner une période de disponibilité',
+        [editRange]
+    );
 
     const currentYear = new Date().getFullYear();
     const annees = useMemo(() => Array.from({ length: currentYear - 1899 }, (_, i) => String(currentYear - i)), [currentYear]);
@@ -244,7 +169,7 @@ export default function AnnonceDetails() {
                 payload.kilometrage = Number(editForm.kilometrage);
             }
 
-            // Coordonnées GPS (doivent être des nombres, pas des strings)
+            // Coordonnées GPS
             if (editForm.latitude) {
                 const lat = typeof editForm.latitude === 'string' ? parseFloat(editForm.latitude) : editForm.latitude;
                 if (!isNaN(lat)) payload.latitude = lat;
@@ -261,8 +186,6 @@ export default function AnnonceDetails() {
                 payload.dateFin = editRange.to.toISOString().slice(0, 10);
             }
 
-            console.log("Envoi PUT:", payload);
-
             const res = await fetch(`/api/annonces/id/${id}`, {
                 method: "PUT",
                 headers: {
@@ -271,8 +194,6 @@ export default function AnnonceDetails() {
                 },
                 body: JSON.stringify(payload),
             });
-
-            console.log("Réponse PUT status:", res.status);
 
             if (!res.ok) {
                 let msg = `Erreur ${res.status}: ${res.statusText}`;
@@ -287,18 +208,13 @@ export default function AnnonceDetails() {
             }
 
             const updated = await res.json();
-            console.log("Annonce mise à jour:", updated);
-
             const merged = { ...data, ...updated };
             setData(merged);
             setOriginalData(merged);
             setSaveSuccess(true);
 
-            setTimeout(() => {
-                setEditing(false);
-            }, 1500);
+            setTimeout(() => setEditing(false), 1500);
         } catch (e) {
-            console.error("Erreur handleSave:", e);
             setSaveError(e.message);
         } finally {
             setSaving(false);
@@ -320,7 +236,7 @@ export default function AnnonceDetails() {
                 try {
                     const j = await res.json();
                     msg = j.message || msg;
-                } catch { }
+                } catch {}
                 throw new Error(msg);
             }
             navigate('/my-annonces');
@@ -331,12 +247,14 @@ export default function AnnonceDetails() {
         }
     }
 
+    // Chargement des données + dispos
     useEffect(() => {
         let alive = true;
         (async () => {
             try {
                 setLoading(true);
                 setErr("");
+
                 const res = await fetch(`/api/annonces/id/${id}`, { headers: { Accept: "application/json" } });
                 if (!res.ok) throw new Error("HTTP " + res.status);
                 const a = await res.json();
@@ -376,11 +294,11 @@ export default function AnnonceDetails() {
                                 isOwnerFlag = true;
                             }
                         }
-                    } catch { }
+                    } catch {}
                 }
 
                 if (!isOwnerFlag) {
-                    // Non-propriétaire : récupérer les disponibilités pour la réservation
+                    // Non-proprio: récupérer indispos pour la réservation
                     const tryEndpoints = [
                         `/api/annonces/id/${id}/disponibilites`,
                         `/api/disponibilites/voiture/${norm.id}`,
@@ -395,18 +313,20 @@ export default function AnnonceDetails() {
                                 days = Array.isArray(payload) ? payload : [];
                                 if (days.length || r.ok) break;
                             }
-                        } catch { }
+                        } catch {}
                     }
                     if (!alive) return;
                     const blocked = new Set(
-                        days.filter(d => {
-                            const s = (d.statut || d.status || "").toUpperCase();
-                            return s && s !== "DISPONIBLE";
-                        }).map(d => String(d.jour || d.date || d.day || ""))
+                        days
+                            .filter(d => {
+                                const s = (d.statut || d.status || "").toUpperCase();
+                                return s && s !== "DISPONIBLE";
+                            })
+                            .map(d => String(d.jour || d.date || d.day || ""))
                     );
                     setUnavailable(blocked);
                 } else {
-                    // Propriétaire : récupérer les dates de disponibilité pour affichage dans le formulaire d'édition
+                    // Proprio: récupérer la plage de dispos actuelle (affichage)
                     try {
                         const dispoRes = await fetch(`/api/disponibilites/voiture/${norm.id}`, {
                             headers: {
@@ -414,38 +334,20 @@ export default function AnnonceDetails() {
                                 Authorization: `Bearer ${token}`
                             }
                         });
-                        console.log("Récupération disponibilités propriétaire status:", dispoRes.status);
                         if (dispoRes.ok) {
                             const dispoData = await dispoRes.json();
-                            console.log("Disponibilités reçues:", dispoData);
                             if (Array.isArray(dispoData) && dispoData.length > 0) {
                                 const dates = dispoData
-                                    .filter(d => {
-                                        const statut = (d.statut || d.status || "").toUpperCase();
-                                        return statut === "DISPONIBLE";
-                                    })
-                                    .map(d => {
-                                        const dateStr = d.jour || d.date || d.day;
-                                        return new Date(dateStr);
-                                    })
+                                    .filter(d => ((d.statut || d.status || "").toUpperCase() === "DISPONIBLE"))
+                                    .map(d => new Date(d.jour || d.date || d.day))
                                     .filter(d => !isNaN(d.getTime()))
                                     .sort((a, b) => a - b);
-
-                                console.log("Dates disponibles parsées:", dates);
-
                                 if (dates.length > 0) {
-                                    const range = {
-                                        from: dates[0],
-                                        to: dates[dates.length - 1]
-                                    };
-                                    console.log("Range de disponibilité:", range);
-                                    setCurrentDispoRange(range);
+                                    setCurrentDispoRange({ from: dates[0], to: dates[dates.length - 1] });
                                 }
                             }
                         }
-                    } catch (e) {
-                        console.error("Erreur récupération disponibilités:", e);
-                    }
+                    } catch {}
                 }
             } catch (e) {
                 if (!alive) return;
@@ -487,33 +389,20 @@ export default function AnnonceDetails() {
         <>
             <Header />
             <div className="mx-auto max-w-6xl px-4 py-8 md:py-10 space-y-8">
+                {/* Image principale */}
                 <div className="aspect-[16/9] w-full overflow-hidden rounded-xl bg-muted">
-                    <img src={data.imageUrl || FALLBACK} alt={title || "Annonce"} className="h-full w-full object-cover" onError={(e) => (e.currentTarget.src = FALLBACK)} />
+                    <img
+                        src={data.imageUrl || FALLBACK}
+                        alt={title || "Annonce"}
+                        className="h-full w-full object-cover"
+                        onError={(e) => (e.currentTarget.src = FALLBACK)}
+                    />
                 </div>
+
+                {/* En-tête */}
                 <header className="space-y-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-bold">{title || `Annonce #${id}`}</h1>
-                {/* Section Propriétaire */}
-                {!isOwner && data.proprietaireNom && (
-                    <div className="rounded-xl border bg-white p-5">
-                        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Propriétaire</h2>
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-14 w-14 ring-2 ring-border">
-                                <AvatarImage src="" alt={`${data.proprietairePrenom} ${data.proprietaireNom}`} />
-                                <AvatarFallback className="bg-primary text-white text-lg font-semibold">
-                                    {data.proprietairePrenom?.[0]?.toUpperCase() || ''}{data.proprietaireNom?.[0]?.toUpperCase() || ''}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                                <p className="text-lg font-semibold">
-                                    {data.proprietairePrenom} {data.proprietaireNom}
-                                </p>
-                                <StarRating rating={ownerRating.average} count={ownerRating.count} />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                         {published && <p className="text-sm text-muted-foreground">Publié le {published}</p>}
                         {isOwner && <p className="text-xs text-indigo-600 mt-1">Vous êtes le propriétaire de ce véhicule.</p>}
                         {isOwner && data.statut?.toLowerCase() === 'inactive' && (
@@ -526,6 +415,7 @@ export default function AnnonceDetails() {
                             <p className="text-xs text-gray-600 mt-1 font-medium">Cette annonce a expiré (toutes les dates sont passées).</p>
                         )}
                     </div>
+
                     {isOwner && !editing && data.statut?.toLowerCase() !== 'inactive' && data.statut?.toLowerCase() !== 'expiree' && (
                         <div className="flex gap-2">
                             <Button variant="outline" onClick={startEdit}><Pencil className="w-4 h-4" /> Modifier</Button>
@@ -534,6 +424,7 @@ export default function AnnonceDetails() {
                     )}
                 </header>
 
+                {/* Modal suppression */}
                 {deleteConfirm && (
                     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50">
                         <div className="bg-white rounded-xl p-6 w-[95%] max-w-md space-y-4">
@@ -547,9 +438,11 @@ export default function AnnonceDetails() {
                     </div>
                 )}
 
+                {/* Formulaire d'édition (proprio) */}
                 {editing && isOwner && (
                     <div className="border rounded-xl p-6 bg-white space-y-6">
                         <h2 className="text-lg font-semibold">Modifier l'annonce</h2>
+
                         <div className="grid md:grid-cols-2 gap-4">
                             <div>
                                 <Label className="mb-2 block text-sm">Marque *</Label>
@@ -578,6 +471,7 @@ export default function AnnonceDetails() {
                                 )}
                             </div>
                         </div>
+
                         <div className="grid md:grid-cols-2 gap-4">
                             <div>
                                 <Label className="mb-2 block text-sm">Immatriculation *</Label>
@@ -599,7 +493,10 @@ export default function AnnonceDetails() {
                                                 <CommandEmpty>Aucune année</CommandEmpty>
                                                 <CommandGroup>
                                                     {annees.map((year) => (
-                                                        <CommandItem key={year} onSelect={() => { setEditForm((p) => ({ ...p, annee: year })); setOpenYear(false); }}>
+                                                        <CommandItem
+                                                            key={year}
+                                                            onSelect={() => { setEditForm((p) => ({ ...p, annee: year })); setOpenYear(false); }}
+                                                        >
                                                             {year}
                                                         </CommandItem>
                                                     ))}
@@ -610,6 +507,7 @@ export default function AnnonceDetails() {
                                 </Popover>
                             </div>
                         </div>
+
                         <div className="grid md:grid-cols-2 gap-4">
                             <div>
                                 <Label className="mb-2 block text-sm">Type carburant *</Label>
@@ -660,6 +558,7 @@ export default function AnnonceDetails() {
                                 </Popover>
                             </div>
                         </div>
+
                         <div className="grid md:grid-cols-3 gap-4">
                             <div>
                                 <Label className="mb-2 block text-sm">Prix / jour *</Label>
@@ -674,23 +573,32 @@ export default function AnnonceDetails() {
                                 <Input name="kilometrage" type="number" min={0} value={editForm.kilometrage} onChange={onFieldChange} placeholder="Kilométrage" />
                             </div>
                         </div>
+
                         <div className="flex items-center gap-2">
                             <input type="checkbox" id="clim2" name="climatisation" checked={!!editForm.climatisation} onChange={onFieldChange} />
                             <label htmlFor="clim2" className="text-sm">Climatisation</label>
                         </div>
+
                         <div>
                             <Label className="mb-2 block text-sm">Lieu *</Label>
                             <PlaceAutocomplete
                                 value={editForm.localisation}
                                 onChange={(v) => setEditForm(f => ({ ...f, localisation: v }))}
-                                onSelect={(place) => setEditForm(f => ({ ...f, localisation: place?.label || "", latitude: place?.latitude || "", longitude: place?.longitude || "" }))}
+                                onSelect={(place) => setEditForm(f => ({
+                                    ...f,
+                                    localisation: place?.label || "",
+                                    latitude: place?.latitude || "",
+                                    longitude: place?.longitude || ""
+                                }))}
                                 placeholder="Paris"
                             />
                         </div>
+
                         <div>
                             <Label className="mb-2 block text-sm">Image URL *</Label>
                             <Input name="imageUrl" value={editForm.imageUrl} onChange={onFieldChange} placeholder="Image URL" />
                         </div>
+
                         <div className="space-y-2">
                             <p className="text-sm font-medium">Période de disponibilité</p>
                             {currentDispoRange && !editRange.from && (
@@ -724,12 +632,15 @@ export default function AnnonceDetails() {
                                 Si vous modifiez les dates, elles remplaceront l'ancienne période. Laissez vide pour conserver les dates actuelles.
                             </p>
                         </div>
+
                         <div>
                             <Label className="mb-2 block text-sm">Description</Label>
                             <Textarea name="description" value={editForm.description} onChange={onFieldChange} placeholder="Description" />
                         </div>
+
                         {saveError && <p className="text-sm text-destructive">{saveError}</p>}
                         {saveSuccess && <p className="text-sm text-green-600">Modifications enregistrées.</p>}
+
                         <div className="flex justify-end gap-3">
                             <Button variant="ghost" onClick={cancelEdit} disabled={saving}>Annuler</Button>
                             <Button onClick={handleSave} disabled={saving}>{saving ? "Sauvegarde..." : "Enregistrer"}</Button>
@@ -737,6 +648,7 @@ export default function AnnonceDetails() {
                     </div>
                 )}
 
+                {/* Corps principal : infos + panneau réservation (non proprio) */}
                 {!editing && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                         <div className={isOwner ? "lg:col-span-3" : "lg:col-span-2"}>
@@ -759,22 +671,25 @@ export default function AnnonceDetails() {
                                     {isOwner && (
                                         <div className="flex flex-col gap-1 p-3 rounded-lg border bg-white">
                                             <span className="text-xs uppercase tracking-wide text-muted-foreground">Statut</span>
-                                            <span className={`text-sm font-medium ${
-                                                data.statut?.toLowerCase() === 'inactive' ? 'text-red-600' : 
-                                                data.statut?.toLowerCase() === 'disponible' ? 'text-green-600' : 
-                                                data.statut?.toLowerCase() === 'completement_reservee' ? 'text-orange-600' :
-                                                data.statut?.toLowerCase() === 'expiree' ? 'text-gray-600' :
-                                                'text-blue-600'
-                                            }`}>
-                                                {data.statut?.toLowerCase() === 'inactive' ? 'Inactive' :
-                                                 data.statut?.toLowerCase() === 'disponible' ? 'Disponible' :
-                                                 data.statut?.toLowerCase() === 'completement_reservee' ? 'Complètement réservée' :
-                                                 data.statut?.toLowerCase() === 'expiree' ? 'Expirée' :
-                                                 data.statut || '—'}
-                                            </span>
+                                            <span
+                                                className={`text-sm font-medium ${
+                                                    data.statut?.toLowerCase() === 'inactive' ? 'text-red-600' :
+                                                        data.statut?.toLowerCase() === 'disponible' ? 'text-green-600' :
+                                                            data.statut?.toLowerCase() === 'completement_reservee' ? 'text-orange-600' :
+                                                                data.statut?.toLowerCase() === 'expiree' ? 'text-gray-600' :
+                                                                    'text-blue-600'
+                                                }`}
+                                            >
+                        {data.statut?.toLowerCase() === 'inactive' ? 'Inactive' :
+                            data.statut?.toLowerCase() === 'disponible' ? 'Disponible' :
+                                data.statut?.toLowerCase() === 'completement_reservee' ? 'Complètement réservée' :
+                                    data.statut?.toLowerCase() === 'expiree' ? 'Expirée' :
+                                        data.statut || '—'}
+                      </span>
                                         </div>
                                     )}
                                 </div>
+
                                 <div>
                                     <h3 className="text-md font-semibold mb-2">Description</h3>
                                     <p className="text-sm whitespace-pre-wrap leading-relaxed">{data.description || "—"}</p>
@@ -782,83 +697,25 @@ export default function AnnonceDetails() {
                             </section>
                         </div>
 
+                        {/* Panneau réservation (uniquement non-proprio) */}
                         {!isOwner && (
                             <aside className="lg:col-span-1">
-                                <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                                    <div className="mb-4">
-                                        <div className="text-2xl font-extrabold">
-                                            {Number.isFinite(total)
-                                                ? total.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
-                                                : "—"}
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">
-                                            {diffDaysInclusive(range.from, range.to ?? range.from)} jour(s)
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="flex flex-col text-left min-w-0">
-                                            <span className="text-sm text-gray-600 mb-1 leading-none">Votre voyage</span>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <button
-                                                        type="button"
-                                                        className="h-12 w-full rounded-lg border border-gray-300 px-4 text-base leading-none text-left flex items-center justify-between gap-3 bg-white shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-0 overflow-hidden"
-                                                    >
-                                                        <span className="truncate">{formatRangeWithHour(range, hour)}</span>
-                                                        <span className="inline-flex w-7 h-7 items-center justify-center rounded bg-gray-100 shrink-0">
-                                                            <CalIcon className="w-4 h-4 text-gray-700" />
-                                                        </span>
-                                                    </button>
-                                                </PopoverTrigger>
-                                                <PopoverContent side="bottom" align="start" sideOffset={12} avoidCollisions={false} className="z-[400] w-[min(92vw,360px)] sm:w-auto rounded-xl border border-gray-200 bg-white p-3 shadow-2xl">
-                                                    <Calendar
-                                                        mode="range"
-                                                        numberOfMonths={months}
-                                                        locale={fr}
-                                                        selected={range}
-                                                        onSelect={(r) => {
-                                                            const from = r?.from ?? today;
-                                                            const to = r?.to ?? r?.from ?? from;
-                                                            setRange({ from, to });
-                                                        }}
-                                                        defaultMonth={range?.from}
-                                                        disabled={[
-                                                            (d) => d < today,
-                                                            (d) => unavailable.size > 0 && unavailable.has(toYMD(d)),
-                                                            { outside: true },
-                                                        ]}
-                                                        showOutsideDays={false}
-                                                        initialFocus
-                                                    />
-                                                </PopoverContent>
-                                            </Popover>
-                                        </div>
-                                        <div className="rounded-lg border bg-white px-4 py-3 text-sm">
-                                            <div className="text-gray-600 mb-1">Lieu de prise en charge et de retour</div>
-                                            <div className="font-medium inline-flex items-center gap-1">
-                                                <MapPin className="w-4 h-4" />
-                                                {data.localisation || "—"}
-                                            </div>
-                                        </div>
-                                        {reservationError && (
-                                            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">{reservationError}</div>
-                                        )}
-                                        {reservationSuccess && (
-                                            <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">✅ Réservation confirmée ! Redirection...</div>
-                                        )}
-                                        <Button
-                                            className="w-full h-12"
-                                            onClick={handleReservation}
-                                            disabled={reserving || reservationSuccess}
-                                        >
-                                            {reserving
-                                                ? "Réservation en cours..."
-                                                : reservationSuccess
-                                                    ? "✓ Réservé"
-                                                    : "Réserver"}
-                                        </Button>
-                                    </div>
-                                </div>
+                                <ReservationPanel
+                                    voitureId={Number(id)}
+                                    prixParJour={data.prixParJour}
+                                    localisation={data.localisation}
+                                    unavailable={unavailable}
+                                    token={token}
+                                    disabled={
+                                        (data.statut?.toLowerCase?.() === "inactive") ||
+                                        (data.statut?.toLowerCase?.() === "expiree")
+                                    }
+                                    onSuccess={() => {
+                                        setTimeout(() => {
+                                            navigate("/demandes-reservation", { state: { tab: "mes-demandes" } });
+                                        }, 1000);
+                                    }}
+                                />
                             </aside>
                         )}
                     </div>
@@ -877,36 +734,3 @@ function Info({ label, value }) {
         </div>
     );
 }
-
-function StarRating({ rating, count }) {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-
-    for (let i = 0; i < 5; i++) {
-        if (i < fullStars) {
-            stars.push(<Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />);
-        } else if (i === fullStars && hasHalfStar) {
-            stars.push(
-                <div key={i} className="relative w-4 h-4">
-                    <Star className="w-4 h-4 text-gray-300 absolute" />
-                    <div className="overflow-hidden w-2 absolute">
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    </div>
-                </div>
-            );
-        } else {
-            stars.push(<Star key={i} className="w-4 h-4 text-gray-300" />);
-        }
-    }
-
-    return (
-        <div className="flex items-center gap-1">
-            <div className="flex items-center gap-0.5">{stars}</div>
-            <span className="text-sm text-muted-foreground ml-1">
-                {rating > 0 ? `${rating.toFixed(1)} (${count} avis)` : 'Aucun avis'}
-            </span>
-        </div>
-    );
-}
-
