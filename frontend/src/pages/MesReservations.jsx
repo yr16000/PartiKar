@@ -24,6 +24,7 @@ export default function MesReservations() {
 
   // États pour les modales
   const [avisModal, setAvisModal] = useState({ open: false, locationId: null, existingAvis: null });
+  const [confirmModal, setConfirmModal] = useState({ open: false, type: null, locationId: null, reservation: null });
   const [actionLoading, setActionLoading] = useState(false);
   const [avisForm, setAvisForm] = useState({
     noteUtilisateur: 5,
@@ -71,10 +72,6 @@ export default function MesReservations() {
   };
 
   const handleTerminerReservation = async (locationId) => {
-    if (!confirm('Êtes-vous sûr de vouloir marquer cette réservation comme terminée ?')) {
-      return;
-    }
-
     setActionLoading(true);
     try {
       const res = await fetch(`/api/locations/${locationId}/terminer`, {
@@ -85,7 +82,7 @@ export default function MesReservations() {
         const txt = await res.text();
         throw new Error(txt || 'Erreur lors de la finalisation');
       }
-      alert('✅ Réservation marquée comme terminée !');
+      setConfirmModal({ open: false, type: null, locationId: null, reservation: null });
       fetchData();
     } catch (e) {
       alert('❌ Erreur : ' + e.message);
@@ -151,7 +148,6 @@ export default function MesReservations() {
         throw new Error(txt || 'Erreur lors de la soumission de l\'avis');
       }
 
-      alert(isUpdate ? '✅ Avis modifié avec succès !' : '✅ Avis soumis avec succès !');
       setAvisModal({ open: false, locationId: null, existingAvis: null });
       fetchData();
     } catch (e) {
@@ -240,7 +236,7 @@ export default function MesReservations() {
         <div className='flex gap-3 pt-2'>
           {!isPasse && (
             <Button
-              onClick={() => handleTerminerReservation(reservation.locationId)}
+              onClick={() => setConfirmModal({ open: true, type: 'terminer', locationId: reservation.locationId, reservation })}
               className='flex-1'
               disabled={actionLoading}
             >
@@ -517,6 +513,50 @@ export default function MesReservations() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modale de confirmation professionnelle */}
+      {confirmModal.open && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200'>
+          <div className='bg-white rounded-xl shadow-2xl p-6 w-[95%] max-w-md space-y-4 animate-in zoom-in-95 duration-200'>
+            {confirmModal.type === 'terminer' && (
+              <>
+                <div className='text-center space-y-2'>
+                  <div className='mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center'>
+                    <svg className='w-6 h-6 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M5 13l4 4L19 7' />
+                    </svg>
+                  </div>
+                  <h2 className='text-xl font-semibold'>Marquer comme terminée</h2>
+                  <p className='text-sm text-muted-foreground'>
+                    Vous êtes sur le point de marquer cette réservation comme terminée pour{' '}
+                    <strong>{confirmModal.reservation?.voitureMarque} {confirmModal.reservation?.voitureModele}</strong>.
+                  </p>
+                  <p className='text-sm text-muted-foreground'>
+                    Cette action signifie que la location est terminée et vous pourrez laisser un avis.
+                  </p>
+                </div>
+                <div className='flex gap-3'>
+                  <Button
+                    onClick={() => setConfirmModal({ open: false, type: null, locationId: null, reservation: null })}
+                    variant='outline'
+                    className='flex-1'
+                    disabled={actionLoading}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    onClick={() => handleTerminerReservation(confirmModal.locationId)}
+                    className='flex-1 bg-green-600 hover:bg-green-700'
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? 'Confirmation...' : 'Confirmer'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <Footer />
     </main>
