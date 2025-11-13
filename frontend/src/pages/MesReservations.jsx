@@ -311,7 +311,7 @@ export default function MesReservations() {
       <Header />
       <section className='flex-1 px-4 sm:px-8 py-10 max-w-6xl mx-auto w-full'>
         <div className='mb-8'>
-          <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>Mes réservations & locations</h1>
+          <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>Mes réservations et locations</h1>
           <p className='text-muted-foreground text-sm mt-1'>
             Gérez vos réservations en tant que locataire et vos locations en tant que propriétaire.
           </p>
