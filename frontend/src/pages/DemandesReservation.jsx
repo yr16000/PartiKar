@@ -15,6 +15,7 @@ export default function DemandesReservation() {
   const [mesDemandesEnvoyees, setMesDemandesEnvoyees] = useState([]);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('recues'); // 'recues' ou 'envoyees'
+  const [subTab, setSubTab] = useState('en-cours'); // 'en-cours' ou 'passees'
 
   // États pour les modales de confirmation
   const [confirmModal, setConfirmModal] = useState({ open: false, type: null, locationId: null, demande: null });
@@ -167,6 +168,10 @@ export default function DemandesReservation() {
     );
   };
 
+  // Filtrer les demandes envoyées par statut
+  const demandesEnCours = mesDemandesEnvoyees.filter(d => d.statut === 'EN_ATTENTE');
+  const demandesPassees = mesDemandesEnvoyees.filter(d => d.statut === 'CONFIRMEE' || d.statut === 'ANNULEE' || d.statut === 'TERMINEE');
+
   return (
     <main className='min-h-screen flex flex-col bg-background text-foreground'>
       <Header />
@@ -278,67 +283,144 @@ export default function DemandesReservation() {
         {/* Onglet Mes Demandes Envoyées */}
         {!loading && !error && activeTab === 'envoyees' && (
           <>
-            {mesDemandesEnvoyees.length === 0 ? (
-              <div className='border border-dashed border-border rounded-xl p-8 text-center space-y-4'>
-                <h2 className='text-lg font-semibold'>Aucune demande envoyée</h2>
-                <p className='text-sm text-muted-foreground'>
-                  Vos demandes de réservation apparaîtront ici.
-                </p>
-              </div>
-            ) : (
-              <div className='grid gap-6'>
-                {mesDemandesEnvoyees.map(demande => (
-                  <Card key={demande.locationId} className='overflow-hidden'>
-                    <CardHeader className='bg-muted/30'>
-                      <CardTitle className='text-lg flex items-center justify-between flex-wrap gap-2'>
-                        <span>
-                          {demande.voitureMarque} {demande.voitureModele}
-                        </span>
-                        {getStatutBadge(demande.statut)}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className='pt-6 space-y-4'>
-                      <div className='grid sm:grid-cols-2 gap-4'>
-                        <div>
-                          <p className='text-xs text-muted-foreground mb-1'>Période</p>
-                          <p className='font-medium'>
-                            Du {formatDate(demande.dateDebut)} au {formatDate(demande.dateFin)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className='text-xs text-muted-foreground mb-1'>Prix total</p>
-                          <p className='font-medium text-lg'>{demande.prixTotal} €</p>
-                        </div>
-                        <div>
-                          <p className='text-xs text-muted-foreground mb-1'>Date de demande</p>
-                          <p className='font-medium'>{formatDate(demande.creeLe)}</p>
-                        </div>
-                        <div>
-                          <p className='text-xs text-muted-foreground mb-1'>Statut</p>
-                          <p className='font-medium'>
-                            {demande.statut === 'EN_ATTENTE' && 'En attente de validation'}
-                            {demande.statut === 'CONFIRMEE' && 'Acceptée par le propriétaire'}
-                            {demande.statut === 'ANNULEE' && 'Refusée par le propriétaire'}
-                          </p>
-                        </div>
-                      </div>
+            {/* Sous-onglets pour les demandes envoyées */}
+            <div className='flex gap-2 mb-6'>
+              <button
+                onClick={() => setSubTab('en-cours')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  subTab === 'en-cours'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                En cours ({demandesEnCours.length})
+              </button>
+              <button
+                onClick={() => setSubTab('passees')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  subTab === 'passees'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                Passées ({demandesPassees.length})
+              </button>
+            </div>
 
-                      {/* Bouton d'annulation uniquement pour les demandes EN_ATTENTE */}
-                      {demande.statut === 'EN_ATTENTE' && (
-                        <div className='pt-2'>
-                          <Button
-                            onClick={() => setConfirmModal({ open: true, type: 'annuler', locationId: demande.locationId, demande })}
-                            variant='destructive'
-                            className='w-full'
-                          >
-                            Annuler ma demande
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+            {/* Demandes en cours (EN_ATTENTE) */}
+            {subTab === 'en-cours' && (
+              <>
+                {demandesEnCours.length === 0 ? (
+                  <div className='border border-dashed border-border rounded-xl p-8 text-center space-y-4'>
+                    <h2 className='text-lg font-semibold'>Aucune demande en cours</h2>
+                    <p className='text-sm text-muted-foreground'>
+                      Vos demandes en attente de réponse apparaîtront ici.
+                    </p>
+                  </div>
+                ) : (
+                  <div className='grid gap-6'>
+                    {demandesEnCours.map(demande => (
+                      <Card key={demande.locationId} className='overflow-hidden'>
+                        <CardHeader className='bg-muted/30'>
+                          <CardTitle className='text-lg flex items-center justify-between flex-wrap gap-2'>
+                            <span>
+                              {demande.voitureMarque} {demande.voitureModele}
+                            </span>
+                            {getStatutBadge(demande.statut)}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className='pt-6 space-y-4'>
+                          <div className='grid sm:grid-cols-2 gap-4'>
+                            <div>
+                              <p className='text-xs text-muted-foreground mb-1'>Période</p>
+                              <p className='font-medium'>
+                                Du {formatDate(demande.dateDebut)} au {formatDate(demande.dateFin)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className='text-xs text-muted-foreground mb-1'>Prix total</p>
+                              <p className='font-medium text-lg'>{demande.prixTotal} €</p>
+                            </div>
+                            <div>
+                              <p className='text-xs text-muted-foreground mb-1'>Date de demande</p>
+                              <p className='font-medium'>{formatDate(demande.creeLe)}</p>
+                            </div>
+                            <div>
+                              <p className='text-xs text-muted-foreground mb-1'>Statut</p>
+                              <p className='font-medium'>En attente de validation</p>
+                            </div>
+                          </div>
+
+                          <div className='pt-2'>
+                            <Button
+                              onClick={() => setConfirmModal({ open: true, type: 'annuler', locationId: demande.locationId, demande })}
+                              variant='destructive'
+                              className='w-full'
+                            >
+                              Annuler ma demande
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Demandes passées (CONFIRMEE, ANNULEE, TERMINEE) */}
+            {subTab === 'passees' && (
+              <>
+                {demandesPassees.length === 0 ? (
+                  <div className='border border-dashed border-border rounded-xl p-8 text-center space-y-4'>
+                    <h2 className='text-lg font-semibold'>Aucune demande passée</h2>
+                    <p className='text-sm text-muted-foreground'>
+                      Vos demandes acceptées, refusées ou terminées apparaîtront ici.
+                    </p>
+                  </div>
+                ) : (
+                  <div className='grid gap-6'>
+                    {demandesPassees.map(demande => (
+                      <Card key={demande.locationId} className='overflow-hidden'>
+                        <CardHeader className='bg-muted/30'>
+                          <CardTitle className='text-lg flex items-center justify-between flex-wrap gap-2'>
+                            <span>
+                              {demande.voitureMarque} {demande.voitureModele}
+                            </span>
+                            {getStatutBadge(demande.statut)}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className='pt-6 space-y-4'>
+                          <div className='grid sm:grid-cols-2 gap-4'>
+                            <div>
+                              <p className='text-xs text-muted-foreground mb-1'>Période</p>
+                              <p className='font-medium'>
+                                Du {formatDate(demande.dateDebut)} au {formatDate(demande.dateFin)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className='text-xs text-muted-foreground mb-1'>Prix total</p>
+                              <p className='font-medium text-lg'>{demande.prixTotal} €</p>
+                            </div>
+                            <div>
+                              <p className='text-xs text-muted-foreground mb-1'>Date de demande</p>
+                              <p className='font-medium'>{formatDate(demande.creeLe)}</p>
+                            </div>
+                            <div>
+                              <p className='text-xs text-muted-foreground mb-1'>Statut</p>
+                              <p className='font-medium'>
+                                {demande.statut === 'CONFIRMEE' && 'Acceptée par le propriétaire'}
+                                {demande.statut === 'ANNULEE' && 'Refusée par le propriétaire'}
+                                {demande.statut === 'TERMINEE' && 'Terminée'}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
