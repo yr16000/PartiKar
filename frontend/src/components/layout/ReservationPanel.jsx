@@ -1,5 +1,5 @@
 // src/components/reservations/ReservationPanel.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -37,23 +37,51 @@ export default function ReservationPanel({
     const navigate = useNavigate();
 
     const today = useMemo(() => stripTime(new Date()), []);
-    const [range, setRange] = useState({ from: today, to: today });
+    const [range, setRange] = useState({ from: null, to: null });
     const [reserving, setReserving] = useState(false);
     const [reservationError, setReservationError] = useState("");
     const [reservationSuccess, setReservationSuccess] = useState(false);
-    const [hour] = useState("10:00"); // gardé si tu veux réactiver plus tard
+    const [hour] = useState("10:00");
+
+    // État pour les disponibilités récupérées du backend
+    const [disponibilites, setDisponibilites] = useState([]);
+    const [loadingDispos, setLoadingDispos] = useState(true);
+
+    // Récupérer les disponibilités depuis le backend
+    useEffect(() => {
+        async function fetchDisponibilites() {
+            try {
+                setLoadingDispos(true);
+                const res = await fetch(`/api/annonces/id/${voitureId}/disponibilites`);
+                if (!res.ok) {
+                    throw new Error("Erreur lors de la récupération des disponibilités");
+                }
+                const data = await res.json();
+                setDisponibilites(data);
+            } catch (error) {
+                console.error("Erreur:", error);
+                setReservationError("Impossible de charger les disponibilités");
+            } finally {
+                setLoadingDispos(false);
+            }
+        }
+
+        if (voitureId) {
+            fetchDisponibilites();
+        }
+    }, [voitureId]);
+
+    // Calculer les jours disponibles (statut DISPONIBLE uniquement)
+    const availableDaysYMD = useMemo(() => {
+        return disponibilites
+            .filter(dispo => dispo.statut === "DISPONIBLE")
+            .map(dispo => dispo.jour); // Le backend retourne déjà au format YYYY-MM-DD
+    }, [disponibilites]);
 
     const hasValidRange = !!range?.from && !!(range?.to ?? range?.from);
     const nights = diffDaysInclusive(range?.from, range?.to ?? range?.from);
     const daily = Number.isFinite(Number(prixParJour)) ? Number(prixParJour) : null;
     const total = daily && hasValidRange ? daily * nights : null;
-
-    // On désactive: (1) dates passées, (2) dates indisponibles
-    const disabledDays = [
-        (d) => stripTime(d) < today,
-        (d) => unavailable.has(toYMD(stripTime(d))),
-    ];
-
 
     async function reserve() {
         try {
@@ -119,21 +147,26 @@ export default function ReservationPanel({
                 <div className="flex flex-col text-left min-w-0">
                     <span className="text-sm text-gray-600 mb-1 leading-none">Votre voyage</span>
 
-                    <DateRangePicker
-                        value={range}
-                        onChange={(r) => {
-                            const from = r?.from ? stripTime(r.from) : null;
-                            const to = r?.to ? stripTime(r.to) : r?.from ? stripTime(r.from) : null;
-                            setRange({ from, to });
-                            setReservationError("");
-                        }}
-                        placeholder="Sélectionner une période"
-                        minDate={today}
-                        disabledDays={disabledDays}
-                        // Si tu veux tout griser sauf des jours autorisés :
-                        // lockToAvailable
-                        // availableDaysYMD={["2025-11-20", "2025-11-21", ...]}
-                    />
+                    {loadingDispos ? (
+                        <div className="h-11 flex items-center justify-center border rounded-lg bg-gray-50 text-sm text-gray-500">
+                            Chargement des disponibilités...
+                        </div>
+                    ) : (
+                        <DateRangePicker
+                            value={range}
+                            onChange={(r) => {
+                                const from = r?.from ? stripTime(r.from) : null;
+                                const to = r?.to ? stripTime(r.to) : r?.from ? stripTime(r.from) : null;
+                                setRange({ from, to });
+                                setReservationError("");
+                            }}
+                            placeholder="Sélectionner une période"
+                            minDate={today}
+                            // Activer le mode "lock to available"
+                            lockToAvailable={true}
+                            availableDaysYMD={availableDaysYMD}
+                        />
+                    )}
                 </div>
 
                 <div className="rounded-lg border bg-white px-4 py-3 text-sm">
@@ -158,7 +191,7 @@ export default function ReservationPanel({
                 <Button
                     className="w-full h-12"
                     onClick={reserve}
-                    disabled={disabled || reserving || reservationSuccess || !hasValidRange}
+                    disabled={disabled || reserving || reservationSuccess || !hasValidRange || loadingDispos}
                 >
                     {reserving ? "Réservation en cours..." : reservationSuccess ? "✓ Réservé" : "Réserver"}
                 </Button>

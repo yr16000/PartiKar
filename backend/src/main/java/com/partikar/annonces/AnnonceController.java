@@ -170,6 +170,22 @@ public class AnnonceController {
     }
 
     /**
+     * Récupère les disponibilités d'une voiture par son ID.
+     * GET /api/annonces/id/{voitureId}/disponibilites
+     */
+    @GetMapping("/id/{voitureId}/disponibilites")
+    public ResponseEntity<?> getDisponibilites(@PathVariable Long voitureId) {
+        try {
+            List<com.partikar.disponibilite.DisponibiliteResponse> disponibilites =
+                    annonceService.getDisponibilites(voitureId);
+            return ResponseEntity.ok(disponibilites);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
      * Classe interne pour les réponses d'erreur.
      */
     private static class ErrorResponse {

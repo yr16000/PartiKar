@@ -89,7 +89,7 @@ export default function DateRangePicker({
         return arr;
     }, [minDate, maxDate]);
 
-    // 🔒 Si lockToAvailable=true -> on désactive TOUT ce qui n’est PAS dans availableDaysYMD
+    // Si lockToAvailable=true -> on désactive TOUT ce qui n’est PAS dans availableDaysYMD
     const lockPredicate = useMemo(() => {
         if (!lockToAvailable) return null;
         return (d) => !availSet.has(toYMD(stripTime(d)));
@@ -101,6 +101,13 @@ export default function DateRangePicker({
     }, [baseDisabled, disabledDays, lockPredicate]);
 
     const label = formatRangeLabel(value || {}, placeholder);
+
+    const today = useMemo(() => stripTime(new Date()), []);
+    const muteToday = useMemo(
+        () => value?.from && stripTime(value.from) > today,
+        [value?.from, today]
+    );
+
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -151,6 +158,7 @@ export default function DateRangePicker({
                     classNames={{
                         range_start: "rounded-md bg-transparent",
                         range_end: "rounded-md bg-transparent",
+                        ...(muteToday ? { today: "" } : {}),
                     }}
                 />
             </PopoverContent>
