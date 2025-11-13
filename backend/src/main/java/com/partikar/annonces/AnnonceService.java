@@ -212,7 +212,9 @@ public class AnnonceService {
         return voitures.stream()
                 .map(voiture -> {
                     int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-                    return AnnonceResponse.fromVoiture(voiture, nbJours);
+                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+                    enrichirAvecNoteProprietaire(response);
+                    return response;
                 })
                 .collect(Collectors.toList());
     }
@@ -229,7 +231,9 @@ public class AnnonceService {
                 .orElseThrow(() -> new RuntimeException("Voiture introuvable avec l'ID: " + voitureId));
 
         int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-        return AnnonceResponse.fromVoiture(voiture, nbJours);
+        AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+        enrichirAvecNoteProprietaire(response);
+        return response;
     }
 
     /**
@@ -243,11 +247,12 @@ public class AnnonceService {
         List<Voiture> voitures = voitureRepository.findAll();
 
         return voitures.stream()
-                // Afficher uniquement les voitures "disponible" (avec au moins une date future disponible)
                 .filter(v -> "disponible".equalsIgnoreCase(v.getStatut()))
                 .map(voiture -> {
                     int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-                    return AnnonceResponse.fromVoiture(voiture, nbJours);
+                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+                    enrichirAvecNoteProprietaire(response);
+                    return response;
                 })
                 // Masquer les annonces complètement réservées UNIQUEMENT sur l'accueil
                 .filter(response -> response.getNbJoursDisponibles() > 0)
@@ -417,6 +422,9 @@ public class AnnonceService {
                 .map(voiture -> {
                     int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
                     AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+
+                    // Enrichir avec la note du propriétaire
+                    enrichirAvecNoteProprietaire(response);
 
                     // Calculer et ajouter la distance si géolocalisation activée
                     if (request.getLatitude() != null && request.getLongitude() != null
@@ -772,6 +780,36 @@ public class AnnonceService {
             voiture.setStatut(nouveauStatut);
             voiture.setMajLe(LocalDateTime.now());
             voitureRepository.save(voiture);
+        }
+    }
+
+    /**
+     * Enrichit une AnnonceResponse avec la note moyenne et le nombre d'avis du propriétaire.
+     *
+     * @param response L'AnnonceResponse à enrichir
+     */
+    private void enrichirAvecNoteProprietaire(AnnonceResponse response) {
+        try {
+            if (response.getProprietaireId() != null) {
+                List<com.partikar.avis.Avis> avisProprietaire = avisRepository.findByCibleId(response.getProprietaireId());
+                if (!avisProprietaire.isEmpty()) {
+                    double moyenne = avisProprietaire.stream()
+                        .filter(avis -> avis.getNoteUtilisateur() != null)
+                        .mapToInt(com.partikar.avis.Avis::getNoteUtilisateur)
+                        .average()
+                        .orElse(0.0);
+                    response.setProprietaireMoyenneAvis(moyenne);
+                    response.setProprietaireNbAvis(avisProprietaire.size());
+                } else {
+                    response.setProprietaireMoyenneAvis(0.0);
+                    response.setProprietaireNbAvis(0);
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Erreur lors de l'enrichissement des avis pour le propriétaire {}: {}",
+                       response.getProprietaireId(), e.getMessage());
+            response.setProprietaireMoyenneAvis(0.0);
+            response.setProprietaireNbAvis(0);
         }
     }
 }

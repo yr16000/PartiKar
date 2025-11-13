@@ -88,6 +88,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/cars/**").permitAll()
                         .requestMatchers("/api/geocode/**").permitAll()
                         .requestMatchers("/api/annonces/**").permitAll()
+                        .requestMatchers("/api/disponibilites/**").permitAll()
+                        .requestMatchers("/api/avis/**").permitAll()
 
                         // Protégé
                         .requestMatchers("/api/users/me").authenticated()

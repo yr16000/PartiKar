@@ -75,8 +75,6 @@ export default function DemandesReservation() {
       // Recharger les demandes
       setDemandesRecues(demandesRecues.filter(d => d.locationId !== locationId));
       setConfirmModal({ open: false, type: null, locationId: null, demande: null });
-      // Message de succès
-      alert('✅ Réservation acceptée avec succès !');
     } catch (e) {
       alert('❌ Erreur : ' + e.message);
     } finally {

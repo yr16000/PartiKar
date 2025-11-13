@@ -342,6 +342,34 @@ public class LocationService {
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
 
+        // Supprimer automatiquement les autres demandes EN_ATTENTE qui se chevauchent avec les dates acceptées
+        List<Location> autresDemandesEnAttente = locationRepository.findByVoitureIdAndStatut(
+                location.getVoiture().getId(), "EN_ATTENTE");
+
+        for (Location autreDemande : autresDemandesEnAttente) {
+            // Vérifier si les dates se chevauchent
+            boolean seChevauche = !(autreDemande.getDateFin().isBefore(location.getDateDebut()) ||
+                                   autreDemande.getDateDebut().isAfter(location.getDateFin()));
+
+            if (seChevauche) {
+                // Annuler cette demande car elle chevauche avec la réservation acceptée
+                autreDemande.setStatut("ANNULEE");
+                autreDemande.setMajLe(LocalDateTime.now());
+                locationRepository.save(autreDemande);
+
+                // Annuler la transaction associée pour libérer les crédits suspendus
+                try {
+                    transactionService.annulerTransaction(autreDemande.getId());
+                } catch (Exception e) {
+                    logger.warn("Erreur lors de l'annulation de la transaction pour la demande ID={}: {}",
+                               autreDemande.getId(), e.getMessage());
+                }
+
+                logger.info("Demande EN_ATTENTE ID={} automatiquement annulée car elle chevauche avec la réservation acceptée ID={}",
+                           autreDemande.getId(), locationId);
+            }
+        }
+
         // Confirmer la transaction : débiter le locataire et créditer le propriétaire
         transactionService.confirmerTransaction(location.getId());
 

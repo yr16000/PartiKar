@@ -10,15 +10,16 @@ export default function CarCard({ car }) {
     const imageUrl = car?.imageUrl || FALLBACK;
     const price = car?.prixParJour ? `${car.prixParJour}€ / jour` : "";
 
-    const rating = car?.moyenneAvis;
-    const reviewCount = car?.nbAvis;
+    // Note du propriétaire (les données viennent du backend avec le préfixe "proprietaire")
+    const ownerRating = car?.proprietaireMoyenneAvis;
+    const ownerReviewCount = car?.proprietaireNbAvis;
 
     const hasRating =
-        typeof rating === "number" && Number.isFinite(rating) && rating > 0;
+        typeof ownerRating === "number" && Number.isFinite(ownerRating) && ownerRating > 0;
     const hasReviews =
-        typeof reviewCount === "number" &&
-        Number.isFinite(reviewCount) &&
-        reviewCount > 0;
+        typeof ownerReviewCount === "number" &&
+        Number.isFinite(ownerReviewCount) &&
+        ownerReviewCount > 0;
 
     // Masquer complètement l'annonce si elle est entièrement réservée (plus de dates disponibles)
     // Cela s'applique UNIQUEMENT sur la page d'accueil (pas dans "Mes annonces")
@@ -47,14 +48,14 @@ export default function CarCard({ car }) {
                     {title} {subtitle && ` ${subtitle}`}
                 </CardTitle>
 
-                {/* NOUVELLE ANNONCE ou AVIS */}
+                {/* NOUVELLE ANNONCE ou AVIS DU PROPRIÉTAIRE */}
                 {hasRating && hasReviews ? (
                     <p className="text-sm font-medium">
-                        ⭐ {rating.toFixed(1)}{" "}
-                        <span className="text-muted-foreground">({reviewCount} voyages)</span>
+                        ⭐ {ownerRating.toFixed(1)}{" "}
+                        <span className="text-muted-foreground">({ownerReviewCount} avis)</span>
                     </p>
                 ) : (
-                    <p className="text-sm font-medium text-indigo-600">Nouvelle annonce</p>
+                    <p className="text-sm font-medium text-indigo-600">Nouveau propriétaire</p>
                 )}
 
                 {/* Localisation */}
