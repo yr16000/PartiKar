@@ -24,11 +24,6 @@ export default function Footer() {
                             Location de voitures entre particuliers, simple, sûre et flexible
                             partout en France.
                         </p>
-                        <div className="mt-4">
-                            <Button asChild variant="brand">
-                                <Link to="/login">Commencer</Link>
-                            </Button>
-                        </div>
                     </div>
 
                     {/* Découvrir */}

@@ -88,14 +88,14 @@ public class AnnonceService {
             // On peut réutiliser une immatriculation UNIQUEMENT si l'ancienne voiture est "inactive" ou "expiree"
             if (request.getImmatriculation() != null) {
                 List<Voiture> voituresAvecMemeImmat = voitureRepository.findAll().stream()
-                    .filter(v -> v.getImmatriculation() != null
-                        && v.getImmatriculation().equalsIgnoreCase(request.getImmatriculation()))
-                    .toList();
+                        .filter(v -> v.getImmatriculation() != null
+                                && v.getImmatriculation().equalsIgnoreCase(request.getImmatriculation()))
+                        .toList();
 
                 // Vérifier s'il existe des voitures actives avec cette immatriculation
                 boolean immatExisteActive = voituresAvecMemeImmat.stream()
-                    .anyMatch(v -> !"inactive".equalsIgnoreCase(v.getStatut())
-                        && !"expiree".equalsIgnoreCase(v.getStatut()));
+                        .anyMatch(v -> !"inactive".equalsIgnoreCase(v.getStatut())
+                                && !"expiree".equalsIgnoreCase(v.getStatut()));
 
                 if (immatExisteActive) {
                     throw new RuntimeException("Une voiture active avec cette immatriculation existe déjà");
@@ -104,13 +104,13 @@ public class AnnonceService {
                 // Limiter à maximum 1 voiture inactive/expirée avec la même immatriculation
                 // (pour éviter d'avoir 100 voitures inactives avec la même plaque)
                 long nbInactives = voituresAvecMemeImmat.stream()
-                    .filter(v -> "inactive".equalsIgnoreCase(v.getStatut())
-                        || "expiree".equalsIgnoreCase(v.getStatut()))
-                    .count();
+                        .filter(v -> "inactive".equalsIgnoreCase(v.getStatut())
+                                || "expiree".equalsIgnoreCase(v.getStatut()))
+                        .count();
 
                 if (nbInactives > 0) {
                     logger.warn("Réutilisation de l'immatriculation {} (ancienne voiture inactive/expirée)",
-                        request.getImmatriculation());
+                            request.getImmatriculation());
                 }
             }
 
@@ -395,6 +395,22 @@ public class AnnonceService {
                         return true;
                     }
                     return v.getAnnee() != null && v.getAnnee() <= request.getAnneeMax();
+                })
+
+                // Filtre kilométrage minimum
+                .filter(v -> {
+                    if (request.getKilometrageMin() == null) {
+                        return true;
+                    }
+                    return v.getKilometrage() != null && v.getKilometrage() >= request.getKilometrageMin();
+                })
+
+                // Filtre kilométrage maximum
+                .filter(v -> {
+                    if (request.getKilometrageMax() == null) {
+                        return true;
+                    }
+                    return v.getKilometrage() != null && v.getKilometrage() <= request.getKilometrageMax();
                 })
 
                 // Filtre climatisation
