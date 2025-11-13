@@ -88,14 +88,14 @@ public class AnnonceService {
             // On peut réutiliser une immatriculation UNIQUEMENT si l'ancienne voiture est "inactive" ou "expiree"
             if (request.getImmatriculation() != null) {
                 List<Voiture> voituresAvecMemeImmat = voitureRepository.findAll().stream()
-                    .filter(v -> v.getImmatriculation() != null
-                        && v.getImmatriculation().equalsIgnoreCase(request.getImmatriculation()))
-                    .toList();
+                        .filter(v -> v.getImmatriculation() != null
+                                && v.getImmatriculation().equalsIgnoreCase(request.getImmatriculation()))
+                        .toList();
 
                 // Vérifier s'il existe des voitures actives avec cette immatriculation
                 boolean immatExisteActive = voituresAvecMemeImmat.stream()
-                    .anyMatch(v -> !"inactive".equalsIgnoreCase(v.getStatut())
-                        && !"expiree".equalsIgnoreCase(v.getStatut()));
+                        .anyMatch(v -> !"inactive".equalsIgnoreCase(v.getStatut())
+                                && !"expiree".equalsIgnoreCase(v.getStatut()));
 
                 if (immatExisteActive) {
                     throw new RuntimeException("Une voiture active avec cette immatriculation existe déjà");
@@ -104,13 +104,13 @@ public class AnnonceService {
                 // Limiter à maximum 1 voiture inactive/expirée avec la même immatriculation
                 // (pour éviter d'avoir 100 voitures inactives avec la même plaque)
                 long nbInactives = voituresAvecMemeImmat.stream()
-                    .filter(v -> "inactive".equalsIgnoreCase(v.getStatut())
-                        || "expiree".equalsIgnoreCase(v.getStatut()))
-                    .count();
+                        .filter(v -> "inactive".equalsIgnoreCase(v.getStatut())
+                                || "expiree".equalsIgnoreCase(v.getStatut()))
+                        .count();
 
                 if (nbInactives > 0) {
                     logger.warn("Réutilisation de l'immatriculation {} (ancienne voiture inactive/expirée)",
-                        request.getImmatriculation());
+                            request.getImmatriculation());
                 }
             }
 
@@ -212,7 +212,9 @@ public class AnnonceService {
         return voitures.stream()
                 .map(voiture -> {
                     int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-                    return AnnonceResponse.fromVoiture(voiture, nbJours);
+                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+                    enrichirAvecNoteProprietaire(response);
+                    return response;
                 })
                 .collect(Collectors.toList());
     }
@@ -229,7 +231,9 @@ public class AnnonceService {
                 .orElseThrow(() -> new RuntimeException("Voiture introuvable avec l'ID: " + voitureId));
 
         int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-        return AnnonceResponse.fromVoiture(voiture, nbJours);
+        AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+        enrichirAvecNoteProprietaire(response);
+        return response;
     }
 
     /**
@@ -243,11 +247,15 @@ public class AnnonceService {
         List<Voiture> voitures = voitureRepository.findAll();
 
         return voitures.stream()
-                // Afficher uniquement les voitures "disponible" (avec au moins une date future disponible)
                 .filter(v -> "disponible".equalsIgnoreCase(v.getStatut()))
                 .map(voiture -> {
-                    int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-                    return AnnonceResponse.fromVoiture(voiture, nbJours);
+                    // Compter uniquement les jours DISPONIBLES (pas les jours RESERVE)
+                    int nbJoursDisponibles = (int) disponibiliteRepository.findByVoitureId(voiture.getId()).stream()
+                            .filter(d -> d.getStatut() == Disponibilite.Statut.DISPONIBLE)
+                            .count();
+                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJoursDisponibles);
+                    enrichirAvecNoteProprietaire(response);
+                    return response;
                 })
                 // Masquer les annonces complètement réservées UNIQUEMENT sur l'accueil
                 .filter(response -> response.getNbJoursDisponibles() > 0)
@@ -392,6 +400,22 @@ public class AnnonceService {
                     return v.getAnnee() != null && v.getAnnee() <= request.getAnneeMax();
                 })
 
+                // Filtre kilométrage minimum
+                .filter(v -> {
+                    if (request.getKilometrageMin() == null) {
+                        return true;
+                    }
+                    return v.getKilometrage() != null && v.getKilometrage() >= request.getKilometrageMin();
+                })
+
+                // Filtre kilométrage maximum
+                .filter(v -> {
+                    if (request.getKilometrageMax() == null) {
+                        return true;
+                    }
+                    return v.getKilometrage() != null && v.getKilometrage() <= request.getKilometrageMax();
+                })
+
                 // Filtre climatisation
                 .filter(v -> {
                     if (request.getClimatisation() == null) {
@@ -415,8 +439,14 @@ public class AnnonceService {
 
                 // Transformer en AnnonceResponse et ajouter la distance + nb avis
                 .map(voiture -> {
-                    int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+                    // Compter uniquement les jours DISPONIBLES (pas les jours RESERVE)
+                    int nbJoursDisponibles = (int) disponibiliteRepository.findByVoitureId(voiture.getId()).stream()
+                            .filter(d -> d.getStatut() == Disponibilite.Statut.DISPONIBLE)
+                            .count();
+                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJoursDisponibles);
+
+                    // Enrichir avec la note du propriétaire
+                    enrichirAvecNoteProprietaire(response);
 
                     // Calculer et ajouter la distance si géolocalisation activée
                     if (request.getLatitude() != null && request.getLongitude() != null
@@ -434,6 +464,9 @@ public class AnnonceService {
 
                     return response;
                 })
+
+                // Masquer les annonces complètement réservées
+                .filter(response -> response.getNbJoursDisponibles() > 0)
 
                 // Appliquer le tri selon l'option choisie
                 .sorted(getComparator(request))
@@ -772,6 +805,36 @@ public class AnnonceService {
             voiture.setStatut(nouveauStatut);
             voiture.setMajLe(LocalDateTime.now());
             voitureRepository.save(voiture);
+        }
+    }
+
+    /**
+     * Enrichit une AnnonceResponse avec la note moyenne et le nombre d'avis du propriétaire.
+     *
+     * @param response L'AnnonceResponse à enrichir
+     */
+    private void enrichirAvecNoteProprietaire(AnnonceResponse response) {
+        try {
+            if (response.getProprietaireId() != null) {
+                List<com.partikar.avis.Avis> avisProprietaire = avisRepository.findByCibleId(response.getProprietaireId());
+                if (!avisProprietaire.isEmpty()) {
+                    double moyenne = avisProprietaire.stream()
+                        .filter(avis -> avis.getNoteUtilisateur() != null)
+                        .mapToInt(com.partikar.avis.Avis::getNoteUtilisateur)
+                        .average()
+                        .orElse(0.0);
+                    response.setProprietaireMoyenneAvis(moyenne);
+                    response.setProprietaireNbAvis(avisProprietaire.size());
+                } else {
+                    response.setProprietaireMoyenneAvis(0.0);
+                    response.setProprietaireNbAvis(0);
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Erreur lors de l'enrichissement des avis pour le propriétaire {}: {}",
+                       response.getProprietaireId(), e.getMessage());
+            response.setProprietaireMoyenneAvis(0.0);
+            response.setProprietaireNbAvis(0);
         }
     }
 }

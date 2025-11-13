@@ -29,9 +29,16 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-postgres:5432/partikardb
       SPRING_DATASOURCE_USERNAME: Partikar
       SPRING_DATASOURCE_PASSWORD: Partikar1234
+      MAIL_HOST: maildev
+      MAIL_PORT: 1025
+      MAIL_USERNAME: noreply@partikar.com
+      MAIL_PASSWORD: password
+      FRONTEND_URL: http://localhost:5173
     depends_on:
       db-postgres:
         condition: service_healthy
+      maildev:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/annonces >/dev/null || exit 1"]
       interval: 5s

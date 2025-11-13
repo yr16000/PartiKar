@@ -320,26 +320,60 @@ function KilometrageChip({ value, onChange }) {
 
 function TransmissionChip({ value = [], onChange }) {
     const [open, setOpen] = useState(false);
-    const [sel, setSel] = useState(new Set(value));
-    const isActive = sel.size > 0;
-    const toggle = (v)=>{ const n = new Set(sel); n.has(v) ? n.delete(v) : n.add(v); setSel(n); };
+
+    // on ne garde que la 1re valeur (cohérent avec buildRequestBody -> filters.boites?.[0])
+    const [selected, setSelected] = useState(value[0] ?? null);
+    const isActive = !!selected;
+
+    const toggle = (v) => {
+        // si on reclique sur la même -> on désélectionne, sinon on remplace
+        setSelected(prev => (prev === v ? null : v));
+    };
+
+    const apply = () => {
+        onChange?.(selected ? [selected] : []);
+        setOpen(false);
+    };
+
+    const reset = () => {
+        setSelected(null);
+        onChange?.([]);
+    };
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <button className="focus:outline-none"><Chip active={isActive}>Transmission</Chip></button>
+                <button className="focus:outline-none">
+                    <Chip active={isActive}>Transmission</Chip>
+                </button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="start" sideOffset={8} avoidCollisions={false} className="w-[280px] p-0">
+            <PopoverContent
+                side="bottom"
+                align="start"
+                sideOffset={8}
+                avoidCollisions={false}
+                className="w-[280px] p-0"
+            >
                 <Card>
                     <CardContent className="p-3 space-y-2">
-                        {(BOITES || []).map((b)=>(
+                        {(BOITES || []).map((b) => (
                             <label key={b} className="flex items-center gap-2 text-sm">
-                                <Checkbox checked={sel.has(b)} onCheckedChange={()=>toggle(b)} />{b}
+                                {/* visuel "checkbox", logique single-select */}
+                                <Checkbox
+                                    checked={selected === b}
+                                    onCheckedChange={() => toggle(b)}
+                                />
+                                {b}
                             </label>
                         ))}
+
                         <div className="flex items-center justify-between pt-2">
-                            <Button variant="outline" size="sm" onClick={()=>{ setSel(new Set()); onChange?.([]); }}>Réinitialiser</Button>
-                            <Button variant="brand" size="sm" onClick={()=>{ onChange?.(Array.from(sel)); setOpen(false); }}>Appliquer</Button>
+                            <Button variant="outline" size="sm" onClick={reset}>
+                                Réinitialiser
+                            </Button>
+                            <Button variant="brand" size="sm" onClick={apply}>
+                                Appliquer
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -583,6 +617,10 @@ export default function Search() {
         const anneeMin = filters.annees?.min ? Number(filters.annees.min) : null;
         const anneeMax = filters.annees?.max ? Number(filters.annees.max) : null;
 
+        // Kilométrage: convertir en Integer ou null
+        const kilometrageMin = filters.kilometrage?.min ? Number(filters.kilometrage.min) : null;
+        const kilometrageMax = filters.kilometrage?.max ? Number(filters.kilometrage.max) : null;
+
         return {
             latitude: ctx.latitude,
             longitude: ctx.longitude,
@@ -598,7 +636,8 @@ export default function Search() {
             prixMax,
             anneeMin,
             anneeMax,
-            // kilometrageMin/Max: côté back plus tard
+            kilometrageMin,
+            kilometrageMax,
             triOption: filters.tri || "DATE_PUBLICATION_DESC",
         };
     };
@@ -694,7 +733,7 @@ export default function Search() {
                 {/* Actions globales */}
                 <div className="flex justify-end gap-2 mt-3">
                     <Button variant="outline" onClick={resetAll}>Réinitialiser tout</Button>
-                    <Button variant="brand" onClick={fetchResults}>Appliquer</Button>
+                    <Button variant="brand" onClick={fetchResults}>Afficher les résultats</Button>
                 </div>
             </section>
 

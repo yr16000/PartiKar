@@ -34,6 +34,7 @@ public class LocationService {
     private final com.partikar.annonces.AnnonceService annonceService;
     private final com.partikar.avis.AvisRepository avisRepository;
     private final com.partikar.transaction.TransactionService transactionService;
+    private final com.partikar.email.EmailService emailService;
 
     public LocationService(LocationRepository locationRepository,
                           VoitureRepository voitureRepository,
@@ -41,7 +42,8 @@ public class LocationService {
                           DisponibiliteRepository disponibiliteRepository,
                           com.partikar.annonces.AnnonceService annonceService,
                           com.partikar.avis.AvisRepository avisRepository,
-                          com.partikar.transaction.TransactionService transactionService) {
+                          com.partikar.transaction.TransactionService transactionService,
+                          com.partikar.email.EmailService emailService) {
         this.locationRepository = locationRepository;
         this.voitureRepository = voitureRepository;
         this.userRepository = userRepository;
@@ -49,6 +51,7 @@ public class LocationService {
         this.annonceService = annonceService;
         this.avisRepository = avisRepository;
         this.transactionService = transactionService;
+        this.emailService = emailService;
     }
 
     /**
@@ -161,6 +164,9 @@ public class LocationService {
         // NE PAS marquer les jours comme RESERVE pour une demande EN_ATTENTE
         // Les dates seront réservées uniquement lors de l'ACCEPTATION de la demande
         // Cela permet à plusieurs utilisateurs de demander les mêmes dates
+
+        // Envoyer un email au propriétaire pour l'informer de la nouvelle demande
+        emailService.envoyerNotificationNouvelleDemandeProprietaire(savedLocation);
 
         logger.info("Demande de location créée avec succès: ID={}, statut=EN_ATTENTE", savedLocation.getId());
 
@@ -342,11 +348,42 @@ public class LocationService {
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
 
+        // Supprimer automatiquement les autres demandes EN_ATTENTE qui se chevauchent avec les dates acceptées
+        List<Location> autresDemandesEnAttente = locationRepository.findByVoitureIdAndStatut(
+                location.getVoiture().getId(), "EN_ATTENTE");
+
+        for (Location autreDemande : autresDemandesEnAttente) {
+            // Vérifier si les dates se chevauchent
+            boolean seChevauche = !(autreDemande.getDateFin().isBefore(location.getDateDebut()) ||
+                                   autreDemande.getDateDebut().isAfter(location.getDateFin()));
+
+            if (seChevauche) {
+                // Annuler cette demande car elle chevauche avec la réservation acceptée
+                autreDemande.setStatut("ANNULEE");
+                autreDemande.setMajLe(LocalDateTime.now());
+                locationRepository.save(autreDemande);
+
+                // Annuler la transaction associée pour libérer les crédits suspendus
+                try {
+                    transactionService.annulerTransaction(autreDemande.getId());
+                } catch (Exception e) {
+                    logger.warn("Erreur lors de l'annulation de la transaction pour la demande ID={}: {}",
+                               autreDemande.getId(), e.getMessage());
+                }
+
+                logger.info("Demande EN_ATTENTE ID={} automatiquement annulée car elle chevauche avec la réservation acceptée ID={}",
+                           autreDemande.getId(), locationId);
+            }
+        }
+
         // Confirmer la transaction : débiter le locataire et créditer le propriétaire
         transactionService.confirmerTransaction(location.getId());
 
         // Mettre à jour le statut de la voiture
         annonceService.mettreAJourStatutVoiture(location.getVoiture().getId());
+
+        // Envoyer un email au locataire pour l'informer de l'acceptation
+        emailService.envoyerNotificationDemandeAccepteeLocataire(location);
 
         logger.info("Location validée et dates réservées: ID={}", locationId);
     }
@@ -362,9 +399,6 @@ public class LocationService {
         // Vérifier que l'utilisateur est le propriétaire
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getName() == null) {
-        // Annuler la transaction EN_ATTENTE pour libérer les crédits suspendus
-        transactionService.annulerTransaction(location.getId());
-
             throw new RuntimeException("Utilisateur non authentifié");
         }
         String email = auth.getName();
@@ -383,10 +417,16 @@ public class LocationService {
         // Pour une demande EN_ATTENTE, pas besoin de libérer les disponibilités
         // car elles n'ont jamais été réservées
 
+        // Annuler la transaction EN_ATTENTE pour libérer les crédits suspendus
+        transactionService.annulerTransaction(location.getId());
+
         // Marquer la location comme annulée
         location.setStatut("ANNULEE");
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
+
+        // Envoyer un email au locataire pour l'informer du refus
+        emailService.envoyerNotificationDemandeRefuseeLocataire(location);
 
         logger.info("Demande de location refusée par le propriétaire: ID={}", locationId);
     }
@@ -423,8 +463,8 @@ public class LocationService {
         // Annuler la transaction EN_ATTENTE pour libérer les crédits suspendus
         transactionService.annulerTransaction(location.getId());
 
-        // Marquer la location comme annulée
-        location.setStatut("ANNULEE");
+        // Marquer la location comme annulée par le locataire (différent du refus par le propriétaire)
+        location.setStatut("ANNULEE_PAR_LOCATAIRE");
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
 

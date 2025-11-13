@@ -4,6 +4,7 @@ import com.partikar.location.Location;
 import com.partikar.user.User;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -53,6 +54,7 @@ public class Avis {
     @Column(name = "cree_le", nullable = false, updatable = false)
     private LocalDateTime creeLe;
 
+    @UpdateTimestamp
     /** Date de dernière modification */
     @Column(name = "maj_le")
     private LocalDateTime majLe;

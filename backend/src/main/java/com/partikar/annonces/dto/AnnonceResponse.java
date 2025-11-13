@@ -31,6 +31,8 @@ public class AnnonceResponse {
     private Long proprietaireId;
     private String proprietaireNom;
     private String proprietairePrenom;
+    private Double proprietaireMoyenneAvis; // Note moyenne du propriétaire
+    private Integer proprietaireNbAvis; // Nombre d'avis du propriétaire
     private LocalDateTime creeLe;
     private Integer nbJoursDisponibles;
     private Double distanceKm; // Distance par rapport au point de recherche (en km)
@@ -129,6 +131,12 @@ public class AnnonceResponse {
 
     public String getProprietairePrenom() { return proprietairePrenom; }
     public void setProprietairePrenom(String proprietairePrenom) { this.proprietairePrenom = proprietairePrenom; }
+
+    public Double getProprietaireMoyenneAvis() { return proprietaireMoyenneAvis; }
+    public void setProprietaireMoyenneAvis(Double proprietaireMoyenneAvis) { this.proprietaireMoyenneAvis = proprietaireMoyenneAvis; }
+
+    public Integer getProprietaireNbAvis() { return proprietaireNbAvis; }
+    public void setProprietaireNbAvis(Integer proprietaireNbAvis) { this.proprietaireNbAvis = proprietaireNbAvis; }
 
     public LocalDateTime getCreeLe() { return creeLe; }
     public void setCreeLe(LocalDateTime creeLe) { this.creeLe = creeLe; }

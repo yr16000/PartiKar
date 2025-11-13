@@ -33,6 +33,10 @@ public class SearchAnnonceRequest {
     private Integer anneeMin;
     private Integer anneeMax;
 
+    // Filtres kilométrage (nouveau)
+    private Integer kilometrageMin;
+    private Integer kilometrageMax;
+
     // Autres filtres
     private Boolean climatisation;
 
@@ -155,6 +159,22 @@ public class SearchAnnonceRequest {
         this.anneeMax = anneeMax;
     }
 
+    public Integer getKilometrageMin() {
+        return kilometrageMin;
+    }
+
+    public void setKilometrageMin(Integer kilometrageMin) {
+        this.kilometrageMin = kilometrageMin;
+    }
+
+    public Integer getKilometrageMax() {
+        return kilometrageMax;
+    }
+
+    public void setKilometrageMax(Integer kilometrageMax) {
+        this.kilometrageMax = kilometrageMax;
+    }
+
     public Boolean getClimatisation() {
         return climatisation;
     }
@@ -188,9 +208,10 @@ public class SearchAnnonceRequest {
                 ", prixMax=" + prixMax +
                 ", anneeMin=" + anneeMin +
                 ", anneeMax=" + anneeMax +
+                ", kilometrageMin=" + kilometrageMin +
+                ", kilometrageMax=" + kilometrageMax +
                 ", climatisation=" + climatisation +
                 ", triOption=" + triOption +
                 '}';
     }
 }
-

@@ -16,8 +16,9 @@ const normalize = (a) =>
             typeof a.prixParJour === "number"
                 ? a.prixParJour
                 : a.prixParJour?.value ?? a.prixParJour,
-        moyenneAvis: a.moyenneAvis,
-        nbAvis: a.nbAvis,
+        proprietaireMoyenneAvis: a.proprietaireMoyenneAvis,
+        proprietaireNbAvis: a.proprietaireNbAvis,
+        nbJoursDisponibles: a.nbJoursDisponibles,
     });
 
 const Grid = ({ items }) =>

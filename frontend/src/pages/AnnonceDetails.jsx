@@ -7,7 +7,8 @@ import Footer from "@/components/layout/footer.jsx";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalIcon, Pencil } from "lucide-react";
+import { Calendar as CalIcon, Pencil, Star, MapPin, User as UserIcon } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { fr } from "date-fns/locale";
 import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 
 import ReservationPanel from "@/components/layout/ReservationPanel";
+import OwnerReviews from "@/components/layout/OwnerReviews";
 
 const FALLBACK = "https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=1600&auto=format&fit=crop";
 
@@ -57,6 +59,8 @@ export default function AnnonceDetails() {
 
     // Jours indisponibles (YYYY-MM-DD) pour le calendrier de réservation
     const [unavailable, setUnavailable] = useState(new Set());
+    const [ownerRating, setOwnerRating] = useState({ average: 0, count: 0 });
+    const [ownerReviews, setOwnerReviews] = useState([]);
 
     // Proprio / édition
     const [isOwner, setIsOwner] = useState(false);
@@ -278,10 +282,33 @@ export default function AnnonceDetails() {
                     description: a.description,
                     kilometrage: a.kilometrage,
                     proprietaireId: a.proprietaireId,
+                    proprietaireNom: a.proprietaireNom,
+                    proprietairePrenom: a.proprietairePrenom,
                     statut: a.statut,
                 };
                 setData(norm);
                 setOriginalData(norm);
+
+                // Récupérer les avis du propriétaire
+                if (norm.proprietaireId) {
+                    try {
+                        const avisRes = await fetch(`/api/avis/utilisateur/${norm.proprietaireId}`);
+                        if (avisRes.ok) {
+                            const avisData = await avisRes.json();
+                            if (Array.isArray(avisData) && avisData.length > 0) {
+                                setOwnerReviews(avisData);
+                                const notes = avisData.map(avis => avis.noteUtilisateur).filter(n => n != null);
+                                if (notes.length > 0) {
+                                    const sum = notes.reduce((acc, n) => acc + n, 0);
+                                    const avg = sum / notes.length;
+                                    setOwnerRating({ average: avg, count: notes.length });
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Erreur récupération avis propriétaire:", e);
+                    }
+                }
 
                 let isOwnerFlag = false;
                 if (token) {
@@ -652,6 +679,37 @@ export default function AnnonceDetails() {
                 {!editing && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                         <div className={isOwner ? "lg:col-span-3" : "lg:col-span-2"}>
+                            {/* Évaluation du propriétaire */}
+                            {!isOwner && data.proprietaireNom && (
+                                <section className="rounded-xl border bg-white p-5 mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="w-12 h-12 border-2 border-primary/10">
+                                            <AvatarFallback className="bg-primary/5 text-primary text-sm font-semibold">
+                                                {((data.proprietairePrenom || '').charAt(0) + (data.proprietaireNom || '').charAt(0)).toUpperCase() || 'P'}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <h3 className="font-semibold">
+                                                {data.proprietairePrenom} {data.proprietaireNom}
+                                            </h3>
+                                            {ownerRating.count > 0 ? (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <Star className="w-4 h-4 fill-primary text-primary" />
+                                                        <span className="font-medium">{ownerRating.average.toFixed(1)}</span>
+                                                    </div>
+                                                    <span className="text-sm text-muted-foreground">
+                                                        ({ownerRating.count} avis)
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-indigo-600 mt-1">Nouveau utilisateur</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </section>
+                            )}
+
                             <section className="rounded-xl border bg-white p-5 space-y-5">
                                 <h2 className="text-lg font-semibold">Informations complètes</h2>
                                 <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -719,6 +777,16 @@ export default function AnnonceDetails() {
                             </aside>
                         )}
                     </div>
+                )}
+
+                {/* Section avis du propriétaire (en bas de page) */}
+                {!editing && !isOwner && ownerReviews.length > 0 && (
+                    <OwnerReviews
+                        reviews={ownerReviews}
+                        ownerName={data.proprietairePrenom && data.proprietaireNom
+                            ? `${data.proprietairePrenom} ${data.proprietaireNom}`
+                            : "ce propriétaire"}
+                    />
                 )}
             </div>
             <Footer />

@@ -169,6 +169,24 @@ public class AnnonceController {
         }
     }
 
+
+    /**
+     * Récupère les disponibilités d'une annonce.
+     * GET /api/annonces/id/{voitureId}/disponibilites
+     */
+    @GetMapping("/id/{voitureId}/disponibilites")
+    public ResponseEntity<?> getDisponibilitesAnnonce(@PathVariable Long voitureId) {
+        try {
+            // Rediriger vers le service de disponibilités
+            return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT)
+                    .header("Location", "/api/disponibilites/voiture/" + voitureId)
+                    .build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
     /**
      * Classe interne pour les réponses d'erreur.
      */
