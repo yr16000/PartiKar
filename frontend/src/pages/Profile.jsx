@@ -28,7 +28,7 @@ export default function Profile() {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // 🔒 garde d’accès
+    //  garde d’accès
     useEffect(() => {
         if (!localStorage.getItem("token")) redirectToLogin();
     }, []);
@@ -117,7 +117,7 @@ export default function Profile() {
 
             <section className="flex-1 py-10 px-4">
                 <div className="mx-auto w-full max-w-5xl space-y-8">
-                    {/* --- HERO --- */}
+                    {/*  HERO  */}
                     <Card className="border border-border bg-card shadow-brand-md">
                         <CardContent className="p-6 sm:p-8">
                             <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
@@ -137,19 +137,11 @@ export default function Profile() {
                                             <Car className="h-4 w-4" />
                                             <span>Compte PartiKar</span>
                                         </div>
-                                        <span className="hidden sm:inline">•</span>
-                                        <div className="flex items-center gap-2">
-                                            <ShieldCheck className="h-4 w-4" />
-                                            <span>{user?.numeroPermis ? "Conducteur vérifié" : "Non vérifié"}</span>
-                                        </div>
+
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    <Button variant="outline" className="gap-2" onClick={() => alert("À venir : édition du profil")}>
-                                        <Pencil className="h-4 w-4" />
-                                        Modifier
-                                    </Button>
                                     <Button variant="destructive" className="gap-2" onClick={handleLogout}>
                                         <LogOut className="h-4 w-4" />
                                         Se déconnecter
@@ -159,7 +151,7 @@ export default function Profile() {
                         </CardContent>
                     </Card>
 
-                    {/* --- CONTENU --- */}
+                    {/*  CONTENU  */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Infos perso */}
                         <Card className="lg:col-span-2">
@@ -184,18 +176,15 @@ export default function Profile() {
                             <CardContent className="space-y-4">
                                 <InfoRow icon={<CreditCard className="h-4 w-4" />} label="Crédits" value={formatCredits(user?.credits)} />
                                 <Separator />
-                                <Button variant="secondary" className="w-full" onClick={() => alert("Historique à venir")}>
-                                    Voir l’historique
-                                </Button>
                                 <Button variant="destructive" className="w-full" onClick={handleLogout}>
                                     Se déconnecter
                                 </Button>
                             </CardContent>
                         </Card>
 
-                        {/* Permis & conduite */}
+                        {/* Permis et conduite */}
                         <Card className="lg:col-span-3">
-                            <SectionHeader title="Permis & conduite" />
+                            <SectionHeader title="Permis et conduite" />
                             <CardContent>
                                 <InfoGrid
                                     cols="sm:grid-cols-3"
