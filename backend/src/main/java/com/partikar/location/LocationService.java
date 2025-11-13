@@ -399,9 +399,6 @@ public class LocationService {
         // Vérifier que l'utilisateur est le propriétaire
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getName() == null) {
-        // Annuler la transaction EN_ATTENTE pour libérer les crédits suspendus
-        transactionService.annulerTransaction(location.getId());
-
             throw new RuntimeException("Utilisateur non authentifié");
         }
         String email = auth.getName();
@@ -419,6 +416,9 @@ public class LocationService {
 
         // Pour une demande EN_ATTENTE, pas besoin de libérer les disponibilités
         // car elles n'ont jamais été réservées
+
+        // Annuler la transaction EN_ATTENTE pour libérer les crédits suspendus
+        transactionService.annulerTransaction(location.getId());
 
         // Marquer la location comme annulée
         location.setStatut("ANNULEE");
@@ -463,8 +463,8 @@ public class LocationService {
         // Annuler la transaction EN_ATTENTE pour libérer les crédits suspendus
         transactionService.annulerTransaction(location.getId());
 
-        // Marquer la location comme annulée
-        location.setStatut("ANNULEE");
+        // Marquer la location comme annulée par le locataire (différent du refus par le propriétaire)
+        location.setStatut("ANNULEE_PAR_LOCATAIRE");
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
 
