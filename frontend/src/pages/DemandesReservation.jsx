@@ -148,7 +148,9 @@ export default function DemandesReservation() {
     } else if (statutLower === 'confirmee') {
       return <span className='text-sm font-medium px-3 py-1 rounded-full bg-green-100 text-green-700'>Acceptée</span>;
     } else if (statutLower === 'annulee') {
-      return <span className='text-sm font-medium px-3 py-1 rounded-full bg-red-100 text-red-700'>Refusée</span>;
+      return <span className='text-sm font-medium px-3 py-1 rounded-full bg-red-100 text-red-700'>Refusée par le propriétaire</span>;
+    } else if (statutLower === 'annulee_par_locataire') {
+      return <span className='text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700'>Annulée par vous</span>;
     }
     return <span className='text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700'>{statut}</span>;
   };
@@ -170,7 +172,7 @@ export default function DemandesReservation() {
 
   // Filtrer les demandes envoyées par statut
   const demandesEnCours = mesDemandesEnvoyees.filter(d => d.statut === 'EN_ATTENTE');
-  const demandesPassees = mesDemandesEnvoyees.filter(d => d.statut === 'CONFIRMEE' || d.statut === 'ANNULEE' || d.statut === 'TERMINEE');
+  const demandesPassees = mesDemandesEnvoyees.filter(d => d.statut === 'CONFIRMEE' || d.statut === 'ANNULEE' || d.statut === 'ANNULEE_PAR_LOCATAIRE' || d.statut === 'TERMINEE');
 
   return (
     <main className='min-h-screen flex flex-col bg-background text-foreground'>
@@ -411,6 +413,7 @@ export default function DemandesReservation() {
                               <p className='font-medium'>
                                 {demande.statut === 'CONFIRMEE' && 'Acceptée par le propriétaire'}
                                 {demande.statut === 'ANNULEE' && 'Refusée par le propriétaire'}
+                                {demande.statut === 'ANNULEE_PAR_LOCATAIRE' && 'Annulée par vous'}
                                 {demande.statut === 'TERMINEE' && 'Terminée'}
                               </p>
                             </div>

@@ -249,8 +249,11 @@ public class AnnonceService {
         return voitures.stream()
                 .filter(v -> "disponible".equalsIgnoreCase(v.getStatut()))
                 .map(voiture -> {
-                    int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+                    // Compter uniquement les jours DISPONIBLES (pas les jours RESERVE)
+                    int nbJoursDisponibles = (int) disponibiliteRepository.findByVoitureId(voiture.getId()).stream()
+                            .filter(d -> d.getStatut() == Disponibilite.Statut.DISPONIBLE)
+                            .count();
+                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJoursDisponibles);
                     enrichirAvecNoteProprietaire(response);
                     return response;
                 })
@@ -420,8 +423,11 @@ public class AnnonceService {
 
                 // Transformer en AnnonceResponse et ajouter la distance + nb avis
                 .map(voiture -> {
-                    int nbJours = disponibiliteRepository.findByVoitureId(voiture.getId()).size();
-                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJours);
+                    // Compter uniquement les jours DISPONIBLES (pas les jours RESERVE)
+                    int nbJoursDisponibles = (int) disponibiliteRepository.findByVoitureId(voiture.getId()).stream()
+                            .filter(d -> d.getStatut() == Disponibilite.Statut.DISPONIBLE)
+                            .count();
+                    AnnonceResponse response = AnnonceResponse.fromVoiture(voiture, nbJoursDisponibles);
 
                     // Enrichir avec la note du propriétaire
                     enrichirAvecNoteProprietaire(response);
@@ -442,6 +448,9 @@ public class AnnonceService {
 
                     return response;
                 })
+
+                // Masquer les annonces complètement réservées
+                .filter(response -> response.getNbJoursDisponibles() > 0)
 
                 // Appliquer le tri selon l'option choisie
                 .sorted(getComparator(request))
