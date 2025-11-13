@@ -34,6 +34,7 @@ public class LocationService {
     private final com.partikar.annonces.AnnonceService annonceService;
     private final com.partikar.avis.AvisRepository avisRepository;
     private final com.partikar.transaction.TransactionService transactionService;
+    private final com.partikar.email.EmailService emailService;
 
     public LocationService(LocationRepository locationRepository,
                           VoitureRepository voitureRepository,
@@ -41,7 +42,8 @@ public class LocationService {
                           DisponibiliteRepository disponibiliteRepository,
                           com.partikar.annonces.AnnonceService annonceService,
                           com.partikar.avis.AvisRepository avisRepository,
-                          com.partikar.transaction.TransactionService transactionService) {
+                          com.partikar.transaction.TransactionService transactionService,
+                          com.partikar.email.EmailService emailService) {
         this.locationRepository = locationRepository;
         this.voitureRepository = voitureRepository;
         this.userRepository = userRepository;
@@ -49,6 +51,7 @@ public class LocationService {
         this.annonceService = annonceService;
         this.avisRepository = avisRepository;
         this.transactionService = transactionService;
+        this.emailService = emailService;
     }
 
     /**
@@ -161,6 +164,9 @@ public class LocationService {
         // NE PAS marquer les jours comme RESERVE pour une demande EN_ATTENTE
         // Les dates seront réservées uniquement lors de l'ACCEPTATION de la demande
         // Cela permet à plusieurs utilisateurs de demander les mêmes dates
+
+        // Envoyer un email au propriétaire pour l'informer de la nouvelle demande
+        emailService.envoyerNotificationNouvelleDemandeProprietaire(savedLocation);
 
         logger.info("Demande de location créée avec succès: ID={}, statut=EN_ATTENTE", savedLocation.getId());
 
@@ -376,6 +382,9 @@ public class LocationService {
         // Mettre à jour le statut de la voiture
         annonceService.mettreAJourStatutVoiture(location.getVoiture().getId());
 
+        // Envoyer un email au locataire pour l'informer de l'acceptation
+        emailService.envoyerNotificationDemandeAccepteeLocataire(location);
+
         logger.info("Location validée et dates réservées: ID={}", locationId);
     }
 
@@ -415,6 +424,9 @@ public class LocationService {
         location.setStatut("ANNULEE");
         location.setMajLe(LocalDateTime.now());
         locationRepository.save(location);
+
+        // Envoyer un email au locataire pour l'informer du refus
+        emailService.envoyerNotificationDemandeRefuseeLocataire(location);
 
         logger.info("Demande de location refusée par le propriétaire: ID={}", locationId);
     }
