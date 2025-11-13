@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 
 import ReservationPanel from "@/components/layout/ReservationPanel";
+import OwnerReviews from "@/components/layout/OwnerReviews";
 
 const FALLBACK = "https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=1600&auto=format&fit=crop";
 
@@ -59,7 +60,6 @@ export default function AnnonceDetails() {
     // Jours indisponibles (YYYY-MM-DD) pour le calendrier de réservation
     const [unavailable, setUnavailable] = useState(new Set());
     const [ownerRating, setOwnerRating] = useState({ average: 0, count: 0 });
-    // eslint-disable-next-line no-unused-vars
     const [ownerReviews, setOwnerReviews] = useState([]);
 
     // Proprio / édition
@@ -683,8 +683,10 @@ export default function AnnonceDetails() {
                             {!isOwner && data.proprietaireNom && (
                                 <section className="rounded-xl border bg-white p-5 mb-6">
                                     <div className="flex items-center gap-3">
-                                        <Avatar className="w-12 h-12">
-                                            <AvatarFallback><UserIcon className="w-6 h-6" /></AvatarFallback>
+                                        <Avatar className="w-12 h-12 border-2 border-primary/10">
+                                            <AvatarFallback className="bg-primary/5 text-primary text-sm font-semibold">
+                                                {((data.proprietairePrenom || '').charAt(0) + (data.proprietaireNom || '').charAt(0)).toUpperCase() || 'P'}
+                                            </AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <h3 className="font-semibold">
@@ -693,7 +695,7 @@ export default function AnnonceDetails() {
                                             {ownerRating.count > 0 ? (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <div className="flex items-center gap-1">
-                                                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                                                        <Star className="w-4 h-4 fill-primary text-primary" />
                                                         <span className="font-medium">{ownerRating.average.toFixed(1)}</span>
                                                     </div>
                                                     <span className="text-sm text-muted-foreground">
@@ -775,6 +777,16 @@ export default function AnnonceDetails() {
                             </aside>
                         )}
                     </div>
+                )}
+
+                {/* Section avis du propriétaire (en bas de page) */}
+                {!editing && !isOwner && ownerReviews.length > 0 && (
+                    <OwnerReviews
+                        reviews={ownerReviews}
+                        ownerName={data.proprietairePrenom && data.proprietaireNom
+                            ? `${data.proprietairePrenom} ${data.proprietaireNom}`
+                            : "ce propriétaire"}
+                    />
                 )}
             </div>
             <Footer />

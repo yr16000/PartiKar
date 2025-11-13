@@ -184,7 +184,7 @@ export default function ReservationPanel({
                 )}
                 {reservationSuccess && (
                     <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
-                        ✅ Réservation confirmée !
+                        Réservation confirmée !
                     </div>
                 )}
 
